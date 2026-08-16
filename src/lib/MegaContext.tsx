@@ -1,5 +1,12 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
-import { FilterOptions, DEFAULT_FILTERS } from './megaEngine'
+import { FilterOptions, DEFAULT_FILTERS, FIVE_GAMES_MAX_SELECTION } from './megaEngine'
+
+export type AppMode = 'desdobramento' | 'cinco-jogos'
+
+export const MODE_LABELS: Record<AppMode, string> = {
+  desdobramento: 'Modo Desdobramento',
+  'cinco-jogos': 'Modo 5 Jogos',
+}
 
 interface MegaContextType {
   selectedNumbers: number[]
@@ -10,10 +17,15 @@ interface MegaContextType {
   setFilters: React.Dispatch<React.SetStateAction<FilterOptions>>
   toggleFilter: (key: keyof FilterOptions) => void
   resetAll: () => void
+  mode: AppMode
+  setMode: React.Dispatch<React.SetStateAction<AppMode>>
+  /** Limite máximo de dezenas conforme o modo ativo. */
+  maxSelection: number
 }
 
 const STORAGE_KEY_NUMBERS = 'mega_selected_numbers'
 const STORAGE_KEY_FILTERS = 'mega_filters'
+const STORAGE_KEY_MODE = 'mega_mode'
 
 const MegaContext = createContext<MegaContextType | undefined>(undefined)
 
@@ -43,6 +55,18 @@ export const MegaProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return DEFAULT_FILTERS
   })
 
+  const [mode, setMode] = useState<AppMode>(() => {
+    try {
+      const saved = sessionStorage.getItem(STORAGE_KEY_MODE)
+      if (saved === 'cinco-jogos' || saved === 'desdobramento') return saved
+    } catch {
+      // ignore
+    }
+    return 'desdobramento'
+  })
+
+  const maxSelection = mode === 'cinco-jogos' ? FIVE_GAMES_MAX_SELECTION : 15
+
   useEffect(() => {
     try {
       sessionStorage.setItem(STORAGE_KEY_NUMBERS, JSON.stringify(selectedNumbers))
@@ -59,12 +83,20 @@ export const MegaProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [filters])
 
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(STORAGE_KEY_MODE, mode)
+    } catch {
+      // ignore
+    }
+  }, [mode])
+
   const toggleNumber = (n: number) => {
     setSelectedNumbers((prev) => {
       if (prev.includes(n)) {
         return prev.filter((item) => item !== n)
       } else {
-        if (prev.length >= 15) return prev // Max 15
+        if (prev.length >= maxSelection) return prev
         return [...prev, n].sort((a, b) => a - b)
       }
     })
@@ -97,6 +129,9 @@ export const MegaProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setFilters,
         toggleFilter,
         resetAll,
+        mode,
+        setMode,
+        maxSelection,
       }}
     >
       {children}

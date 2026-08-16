@@ -1,10 +1,13 @@
 import { Outlet, useLocation, Link } from 'react-router-dom'
 import { Clover, Award } from 'lucide-react'
+import { useMega, MODE_LABELS } from '@/lib/MegaContext'
 
 export default function Layout() {
   const location = useLocation()
   const isResultsPage = location.pathname.startsWith('/resultados')
   const currentYear = new Date().getFullYear()
+  const { mode } = useMega()
+  const modeLabel = MODE_LABELS[mode]
 
   return (
     <div className="flex flex-col min-h-screen bg-[#0d0f12] text-foreground">
@@ -41,10 +44,15 @@ export default function Layout() {
               </span>
             </div>
 
-            {/* Mega-Sena Badge */}
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950/60 border border-emerald-500/30 text-emerald-300 text-xs font-medium shadow-sm">
-              <Award className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="font-semibold">Mega-Sena</span>
+            {/* Mega-Sena Badge + Modo ativo */}
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <div className="hidden md:flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#161a1f] border border-[#262c34] text-zinc-300 text-xs font-medium">
+                <span className="font-semibold text-emerald-400">{modeLabel}</span>
+              </div>
+              <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950/60 border border-emerald-500/30 text-emerald-300 text-xs font-medium shadow-sm">
+                <Award className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="font-semibold">Mega-Sena</span>
+              </div>
             </div>
           </div>
         </div>
