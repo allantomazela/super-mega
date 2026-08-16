@@ -1,0 +1,167 @@
+/* Global styles - Theme, font, utilities, animations and global components */
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 220 18% 6%; /* #0d0f12 */
+    --foreground: 210 20% 98%; /* #f8fafc */
+
+    --card: 216 17% 10%; /* #161a1f */
+    --card-foreground: 210 20% 98%;
+
+    --popover: 216 17% 10%;
+    --popover-foreground: 210 20% 98%;
+
+    --primary: 158 84% 39%; /* #10b981 */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 217 15% 17%; /* #262c34 */
+    --secondary-foreground: 210 20% 98%;
+
+    --muted: 217 15% 17%;
+    --muted-foreground: 215 14% 65%; /* #9ca3af */
+
+    --accent: 158 84% 39%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217 15% 17%; /* #262c34 */
+    --input: 217 15% 17%;
+    --ring: 158 84% 39%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 220 18% 6%;
+    --sidebar-foreground: 210 20% 98%;
+    --sidebar-primary: 158 84% 39%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 217 15% 17%;
+    --sidebar-accent-foreground: 210 20% 98%;
+    --sidebar-border: 217 15% 17%;
+    --sidebar-ring: 158 84% 39%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-[#0d0f12] text-foreground antialiased selection:bg-emerald-500/30 selection:text-emerald-200;
+    font-family:
+      'Inter',
+      system-ui,
+      -apple-system,
+      BlinkMacSystemFont,
+      'Segoe UI',
+      Roboto,
+      Oxygen,
+      Ubuntu,
+      Cantarell,
+      sans-serif;
+    min-height: 100vh;
+    background-image: radial-gradient(
+      circle at 50% 0%,
+      rgba(16, 185, 129, 0.08) 0%,
+      transparent 60%
+    );
+    background-attachment: fixed;
+  }
+
+  /* NEVER REMOVE THIS */
+  section[aria-label='Notifications alt+T'] {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+}
+
+@layer utilities {
+  .emerald-glow {
+    box-shadow: 0 0 14px rgba(16, 185, 129, 0.45);
+  }
+
+  .emerald-glow-lg {
+    box-shadow: 0 0 24px rgba(16, 185, 129, 0.35);
+  }
+
+  .emerald-gradient {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  }
+
+  .surface-card {
+    background-color: #161a1f;
+    border: 1px solid #262c34;
+  }
+
+  .number-btn-unselected {
+    background-color: #1a1f2b;
+    border: 1px solid #262c34;
+    color: #cbd5e1;
+  }
+
+  .number-btn-unselected:hover {
+    background-color: #232938;
+    border-color: #3b4453;
+    color: #ffffff;
+  }
+
+  @keyframes accordion-down {
+    from {
+      height: 0;
+    }
+    to {
+      height: var(--radix-accordion-content-height);
+    }
+  }
+
+  @keyframes accordion-up {
+    from {
+      height: var(--radix-accordion-content-height);
+    }
+    to {
+      height: 0;
+    }
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes fade-out {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+
+  @keyframes fade-in-up {
+    from {
+      transform: translateY(12px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  .animate-fade-in-up {
+    animation: fade-in-up 0.4s ease-out forwards;
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.3s ease-out forwards;
+  }
+}
