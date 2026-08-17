@@ -258,15 +258,24 @@ interface ApiConcurso {
 }
 
 /**
- * Busca concursos ao vivo da API loteriascaixa-api.
- * Tenta buscar os últimos N concursos a partir do mais recente.
- * Retorna null se a API estiver indisponível.
+ * Cria um AbortController que aborta após `ms` milissegundos.
+ * Usa setTimeout manual para garantir o timeout em qualquer ambiente
+ * (AbortSignal.timeout pode não funcionar em alguns ambientes de preview).
  */
+function timeoutController(ms: number): AbortController {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), ms)
+  // Limpa o timer quando o request for abortado/concluído
+  controller.signal.addEventListener('abort', () => clearTimeout(timer))
+  return controller
+}
+
 export async function buscarConcursosAoVivo(quantidade = 50): Promise<ConcursoHistorico[] | null> {
   try {
     // Busca o concurso mais recente para descobrir o número atual
+    const latestController = timeoutController(6000)
     const respLatest = await fetch(`${API_BASE}/latest`, {
-      signal: AbortSignal.timeout(6000),
+      signal: latestController.signal,
     })
     if (!respLatest.ok) return null
     const latest = (await respLatest.json()) as ApiConcurso
@@ -286,7 +295,8 @@ export async function buscarConcursosAoVivo(quantidade = 50): Promise<ConcursoHi
       const lote = alvos.slice(ini, ini + TAMANHO_LOTE)
       const respostas = await Promise.allSettled(
         lote.map(async (num) => {
-          const r = await fetch(`${API_BASE}/${num}`, { signal: AbortSignal.timeout(6000) })
+          const controller = timeoutController(6000)
+          const r = await fetch(`${API_BASE}/${num}`, { signal: controller.signal })
           if (!r.ok) throw new Error(`HTTP ${r.status}`)
           return r.json()
         }),

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { History, Trophy, Loader2, Wifi, WifiOff, Award } from 'lucide-react'
+import { History, Trophy, Wifi, WifiOff, Award } from 'lucide-react'
 import {
   CONCURSOS_HISTORICOS,
   ConcursoHistorico,
@@ -31,41 +31,35 @@ export const SimulacaoHistorica: React.FC<SimulacaoHistoricaProps> = ({
   jogos,
   conjunto = false,
 }) => {
+  // Abordagem otimista: inicia já com a base estática, exibindo a
+  // simulação imediatamente. Em paralelo dispara a busca à API ao vivo;
+  // se retornar dados válidos (≥10 concursos), troca para 'api'.
   const [concursos, setConcursos] = useState<ConcursoHistorico[]>(CONCURSOS_HISTORICOS)
   const [origem, setOrigem] = useState<'api' | 'estatica'>('estatica')
-  const [carregando, setCarregando] = useState(true)
 
-  // Tenta buscar concursos ao vivo ao montar (fallback para estática)
   useEffect(() => {
     let cancelado = false
-    setCarregando(true)
     buscarConcursosAoVivo(50)
       .then((dados) => {
         if (cancelado) return
         if (dados && dados.length >= 10) {
           setConcursos(dados)
           setOrigem('api')
-        } else {
-          setConcursos(CONCURSOS_HISTORICOS)
-          setOrigem('estatica')
         }
+        // Caso contrário mantém a base estática já exibida.
       })
       .catch(() => {
-        if (cancelado) return
-        setConcursos(CONCURSOS_HISTORICOS)
-        setOrigem('estatica')
-      })
-      .finally(() => {
-        if (!cancelado) setCarregando(false)
+        /* mantém base estática */
       })
     return () => {
       cancelado = true
     }
   }, [])
 
-  // Resultado da simulação
+  // Resultado da simulação — sempre calcula quando há jogos, usando os
+  // concursos atuais (estáticos ou ao vivo). Não gateia por carregamento.
   const resumo = useMemo<ResumoSimulacao | null>(() => {
-    if (carregando || jogos.length === 0) return null
+    if (jogos.length === 0) return null
     if (conjunto) {
       // Modo conjunto: um único resultado agregado
       const r = simularConjunto(jogos, concursos)
@@ -81,7 +75,7 @@ export const SimulacaoHistorica: React.FC<SimulacaoHistoricaProps> = ({
       return agregado
     }
     return montarResumoSimulacao(jogos, concursos, origem)
-  }, [jogos, concursos, carregando, conjunto, origem])
+  }, [jogos, concursos, conjunto, origem])
 
   // Top 10 jogos por taxa de acerto
   const top10 = useMemo<ResultadoJogoSimulacao[]>(() => {
@@ -112,36 +106,21 @@ export const SimulacaoHistorica: React.FC<SimulacaoHistoricaProps> = ({
         {/* Badge de origem dos dados */}
         <div
           className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-semibold ${
-            carregando
-              ? 'bg-zinc-800/50 border-zinc-700 text-zinc-400'
-              : origem === 'api'
-                ? 'bg-emerald-950/50 border-emerald-500/30 text-emerald-400'
-                : 'bg-amber-950/50 border-amber-500/30 text-amber-400'
+            origem === 'api'
+              ? 'bg-emerald-950/50 border-emerald-500/30 text-emerald-400'
+              : 'bg-amber-950/50 border-amber-500/30 text-amber-400'
           }`}
         >
-          {carregando ? (
-            <Loader2 className="w-3 h-3 animate-spin" />
-          ) : origem === 'api' ? (
-            <Wifi className="w-3 h-3" />
-          ) : (
-            <WifiOff className="w-3 h-3" />
-          )}
+          {origem === 'api' ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
           <span>
-            {carregando
-              ? 'Carregando...'
-              : origem === 'api'
-                ? `${concursos.length} concursos (API)`
-                : `${concursos.length} concursos (local)`}
+            {origem === 'api'
+              ? `${concursos.length} concursos (API)`
+              : `${concursos.length} concursos (local)`}
           </span>
         </div>
       </div>
 
-      {carregando ? (
-        <div className="flex items-center justify-center py-12 text-zinc-400">
-          <Loader2 className="w-5 h-5 animate-spin mr-2 text-emerald-400" />
-          <span className="text-sm">Buscando concursos históricos...</span>
-        </div>
-      ) : resumo ? (
+      {resumo ? (
         <>
           {/* Cards de resumo */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
