@@ -49,13 +49,13 @@ export default function Index() {
   const {
     selectedNumbers,
     toggleNumber,
-    clearNumbers,
     filters,
     toggleFilter,
     setSelectedNumbers,
     mode,
     setMode,
     maxSelection,
+    resetAll,
   } = useMega()
 
   const isCincoJogos = mode === 'cinco-jogos'
@@ -277,6 +277,19 @@ export default function Index() {
     setDragOverIdx(null)
   }
 
+  // === Reset completo: limpa dezenas, filtros, resultado 5 jogos e meta ===
+  const handleResetAll = () => {
+    resetAll()
+    setFiveGamesResult(null)
+    setEditableGames(null)
+    setExported(false)
+    setCopiedIndex(null)
+    setMeta(DEFAULT_META)
+    setDragInfo(null)
+    setDragOverIdx(null)
+    setInvalidDropIdx(null)
+  }
+
   const handleModeChange = (next: AppMode) => {
     if (next === mode) return
     // Ao sair do modo 5 jogos, limpa o resultado para não exibir jogos defasados
@@ -305,7 +318,7 @@ export default function Index() {
           </p>
         </div>
 
-        {/* Quick actions: Surpresinha + Limpar */}
+        {/* Quick actions: Surpresinha + Resetar Tudo */}
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -316,23 +329,15 @@ export default function Index() {
             <Dices className="w-3.5 h-3.5 text-emerald-400" />
             <span>{isCincoJogos ? 'Gerar 12 aleatórias' : 'Gerar 10 aleatórias'}</span>
           </button>
-          {count > 0 && (
-            <button
-              type="button"
-              onClick={() => {
-                clearNumbers()
-                if (isCincoJogos) {
-                  setFiveGamesResult(null)
-                  setEditableGames(null)
-                }
-              }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1a1f2b] border border-[#262c34] text-xs text-zinc-400 hover:text-red-400 hover:border-red-900/50 transition-colors"
-              title="Limpar seleção atual"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>Limpar</span>
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={handleResetAll}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-950/40 border border-red-500/40 text-xs font-semibold text-red-300 hover:text-white hover:bg-red-900/50 hover:border-red-400 transition-colors"
+            title="Limpar tudo: dezenas, filtros, jogos e meta — recomeçar do zero"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>Resetar Tudo</span>
+          </button>
         </div>
       </div>
 
