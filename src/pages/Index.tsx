@@ -34,8 +34,12 @@ import {
   FIVE_GAMES_MIN_SELECTION,
   FIVE_GAMES_MAX_SELECTION,
   FiveGamesResult,
+  OptimizationMeta,
+  META_WEIGHTS,
+  DEFAULT_META,
 } from '@/lib/megaEngine'
 import { ToggleSwitch } from '@/components/ToggleSwitch'
+import { SimulacaoHistorica } from '@/components/SimulacaoHistorica'
 
 export default function Index() {
   const navigate = useNavigate()
@@ -57,6 +61,7 @@ export default function Index() {
   const [fiveGamesResult, setFiveGamesResult] = useState<FiveGamesResult | null>(null)
   const [exported, setExported] = useState(false)
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
+  const [meta, setMeta] = useState<OptimizationMeta>(DEFAULT_META)
 
   const count = selectedNumbers.length
 
@@ -107,10 +112,24 @@ export default function Index() {
     setIsLoading(true)
     setExported(false)
     setTimeout(() => {
-      const result = optimizeFiveGamesV2(selectedNumbers)
+      const result = optimizeFiveGamesV2(selectedNumbers, meta)
       setFiveGamesResult(result)
       setIsLoading(false)
     }, 350)
+  }
+
+  // Ao mudar a meta, re-gera automaticamente se já houver jogos
+  const handleMetaChange = (next: OptimizationMeta) => {
+    if (next === meta) return
+    setMeta(next)
+    if (fiveGamesResult && count >= FIVE_GAMES_MIN_SELECTION && count <= FIVE_GAMES_MAX_SELECTION) {
+      setIsLoading(true)
+      setTimeout(() => {
+        const result = optimizeFiveGamesV2(selectedNumbers, next)
+        setFiveGamesResult(result)
+        setIsLoading(false)
+      }, 250)
+    }
   }
 
   const handleGenerate = () => {
@@ -346,9 +365,13 @@ export default function Index() {
               onCopy={copyGameToClipboard}
               onExport={handleExportFiveGames}
               exported={exported}
+              meta={meta}
             />
           )}
           {isCincoJogos && fiveGamesResult && <ProbabilisticAnalysis result={fiveGamesResult} />}
+          {isCincoJogos && fiveGamesResult && (
+            <SimulacaoHistorica jogos={fiveGamesResult.games} conjunto />
+          )}
         </section>
 
         {/* Right Column: Filters (Desdobramento) / Painel 5 Jogos */}
@@ -361,6 +384,8 @@ export default function Index() {
               isLoading={isLoading}
               onGenerate={handleGenerate}
               result={fiveGamesResult}
+              meta={meta}
+              onMetaChange={handleMetaChange}
             />
           ) : (
             <FiltersPanel
@@ -655,7 +680,9 @@ const FiveGamesPanel: React.FC<{
   isLoading: boolean
   onGenerate: () => void
   result: FiveGamesResult | null
-}> = ({ count, isValidCount, isUnderLimit, isLoading, onGenerate, result }) => (
+  meta: OptimizationMeta
+  onMetaChange: (m: OptimizationMeta) => void
+}> = ({ count, isValidCount, isUnderLimit, isLoading, onGenerate, result, meta, onMetaChange }) => (
   <div className="surface-card rounded-2xl p-5 sm:p-6 shadow-xl relative overflow-hidden flex flex-col justify-between">
     <div className="space-y-5">
       {/* Header */}
@@ -689,13 +716,17 @@ const FiveGamesPanel: React.FC<{
           </div>
         </div>
 
+        {/* Controle de Meta de Otimização */}
+        <OptimizationMetaControl meta={meta} onChange={onMetaChange} />
+
         {result && (
           <div className="grid grid-cols-2 gap-2.5">
             <StatBox
               icon={<Percent className="w-4 h-4" />}
               label="Cobertura"
               value={`${result.coveragePercent}%`}
-              accent
+              accent={meta === 'cobertura'}
+              highlight={meta === 'cobertura'}
             />
             <StatBox
               icon={<CheckCircle2 className="w-4 h-4" />}
@@ -759,11 +790,12 @@ const StatBox: React.FC<{
   label: string
   value: string
   accent?: boolean
-}> = ({ icon, label, value, accent }) => (
+  highlight?: boolean
+}> = ({ icon, label, value, accent, highlight }) => (
   <div
-    className={`p-3 rounded-xl border flex items-center gap-2.5 ${
+    className={`p-3 rounded-xl border flex items-center gap-2.5 transition-all ${
       accent ? 'bg-emerald-950/40 border-emerald-500/30' : 'bg-[#161a1f] border-[#262c34]'
-    }`}
+    } ${highlight ? 'ring-1 ring-emerald-400/40 shadow-[0_0_12px_rgba(16,185,129,0.15)]' : ''}`}
   >
     <div
       className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
@@ -786,6 +818,80 @@ const StatBox: React.FC<{
 )
 
 /* ============================================================
+ * Controle de Meta de Otimização (pills)
+ * ============================================================ */
+const OptimizationMetaControl: React.FC<{
+  meta: OptimizationMeta
+  onChange: (m: OptimizationMeta) => void
+}> = ({ meta, onChange }) => {
+  const opcoes: {
+    key: OptimizationMeta
+    label: string
+    desc: string
+    icon: React.ReactNode
+  }[] = [
+    {
+      key: 'cobertura',
+      label: 'Máxima Cobertura',
+      desc: 'Prioriza cobrir todo o grupo',
+      icon: <Percent className="w-3.5 h-3.5" />,
+    },
+    {
+      key: 'equilibrado',
+      label: 'Equilibrado',
+      desc: 'Cobertura + score (padrão)',
+      icon: <Scale className="w-3.5 h-3.5" />,
+    },
+    {
+      key: 'score',
+      label: 'Melhor Score',
+      desc: 'Prioriza o score probabilístico',
+      icon: <BarChart3 className="w-3.5 h-3.5" />,
+    },
+  ]
+
+  return (
+    <div className="p-3.5 rounded-xl bg-[#161a1f] border border-[#262c34]">
+      <div className="flex items-center gap-2 mb-2.5">
+        <Target className="w-3.5 h-3.5 text-emerald-400" />
+        <span className="text-xs font-semibold text-white">Meta de Otimização</span>
+      </div>
+      <div className="grid grid-cols-3 gap-1.5">
+        {opcoes.map((opt) => {
+          const active = meta === opt.key
+          return (
+            <button
+              key={opt.key}
+              type="button"
+              onClick={() => onChange(opt.key)}
+              className={`
+                flex flex-col items-center gap-1 px-2 py-2.5 rounded-lg border transition-all text-center
+                ${
+                  active
+                    ? 'emerald-gradient text-white border-emerald-300/40 shadow-[0_0_12px_rgba(16,185,129,0.25)]'
+                    : 'bg-[#1a1f2b] border-[#262c34] text-zinc-400 hover:text-white hover:border-zinc-600'
+                }
+              `}
+              title={opt.desc}
+            >
+              <span className={active ? 'text-white' : 'text-emerald-400'}>{opt.icon}</span>
+              <span className="text-[10px] font-bold leading-tight">{opt.label}</span>
+            </button>
+          )
+        })}
+      </div>
+      <p className="text-[10px] text-zinc-500 mt-2 leading-relaxed">
+        {META_WEIGHTS[meta].score === 5
+          ? 'Pesos: score ×5 · cobertura ×1 · sobreposição ×1'
+          : META_WEIGHTS[meta].cobertura === 6
+            ? 'Pesos: score ×1 · cobertura ×6 · sobreposição ×2'
+            : 'Pesos: score ×2 · cobertura ×4 · sobreposição ×1'}
+      </p>
+    </div>
+  )
+}
+
+/* ============================================================
  * Seção de resultado do Modo 5 Jogos (cards de bilhete)
  * ============================================================ */
 const FiveGamesResultSection: React.FC<{
@@ -794,7 +900,8 @@ const FiveGamesResultSection: React.FC<{
   onCopy: (game: number[], index: number) => void
   onExport: () => void
   exported: boolean
-}> = ({ result, copiedIndex, onCopy, onExport, exported }) => {
+  meta: OptimizationMeta
+}> = ({ result, copiedIndex, onCopy, onExport, exported, meta }) => {
   return (
     <div className="space-y-6 animate-fade-in-up">
       {/* Header + Export */}
@@ -828,7 +935,13 @@ const FiveGamesResultSection: React.FC<{
 
       {/* Estatísticas de cobertura + Score médio */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="surface-card rounded-xl p-4 border border-[#262c34] flex items-center gap-3">
+        <div
+          className={`surface-card rounded-xl p-4 border flex items-center gap-3 transition-all ${
+            meta === 'cobertura'
+              ? 'border-emerald-500/40 ring-1 ring-emerald-400/40 shadow-[0_0_12px_rgba(16,185,129,0.15)]'
+              : 'border-[#262c34]'
+          }`}
+        >
           <div className="w-9 h-9 rounded-lg bg-emerald-950/50 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
             <Percent className="w-4 h-4" />
           </div>
@@ -876,7 +989,7 @@ const FiveGamesResultSection: React.FC<{
             </div>
           </div>
         </div>
-        <AverageScoreCard scores={result.scores} />
+        <AverageScoreCard scores={result.scores} highlight={meta === 'score'} />
       </div>
 
       {/* Cards dos 5 jogos */}
@@ -987,13 +1100,22 @@ const FiveGameScoreBar: React.FC<{ game: number[] }> = ({ game }) => {
 /* ============================================================
  * Card "Score Médio" — média dos 5 scores com cor correspondente
  * ============================================================ */
-const AverageScoreCard: React.FC<{ scores: number[] }> = ({ scores }) => {
+const AverageScoreCard: React.FC<{ scores: number[]; highlight?: boolean }> = ({
+  scores,
+  highlight,
+}) => {
   const avg =
     scores.length > 0 ? Math.round(scores.reduce((acc, s) => acc + s, 0) / scores.length) : 0
   const { textColor, label } = getScoreColor(avg)
 
   return (
-    <div className="surface-card rounded-xl p-4 border border-[#262c34] flex items-center gap-3">
+    <div
+      className={`surface-card rounded-xl p-4 border flex items-center gap-3 transition-all ${
+        highlight
+          ? 'border-emerald-500/40 ring-1 ring-emerald-400/40 shadow-[0_0_12px_rgba(16,185,129,0.15)]'
+          : 'border-[#262c34]'
+      }`}
+    >
       <div className="w-9 h-9 rounded-lg bg-emerald-950/50 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
         <BarChart3 className="w-4 h-4" />
       </div>

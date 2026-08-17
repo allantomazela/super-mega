@@ -31,6 +31,8 @@ import {
   calculateGameScore,
   getScoreColor,
 } from '@/lib/megaEngine'
+import { ScoreHistogram } from '@/components/ScoreHistogram'
+import { SimulacaoHistorica } from '@/components/SimulacaoHistorica'
 
 const ITEMS_PER_PAGE = 24
 
@@ -352,6 +354,19 @@ export default function Resultados() {
           </div>
         </div>
       </section>
+
+      {/* Histograma de distribuição dos scores */}
+      {filteredCombinations.length > 0 && (
+        <ScoreHistogram
+          scores={filteredCombinations.map((g) => calculateGameScore(g))}
+          scoreMedio={averageScore}
+        />
+      )}
+
+      {/* Simulação Histórica */}
+      {filteredCombinations.length > 0 && (
+        <SimulacaoHistorica jogos={filteredCombinations} conjunto={false} />
+      )}
 
       {/* Action Header: Games Title + Export Button */}
       <section className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#262c34] pb-4">

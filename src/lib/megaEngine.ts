@@ -294,7 +294,37 @@ export function optimizeFiveGames(selected: number[]): FiveGamesResult {
  * ============================================================ */
 const V2_MAX_FULL_COMBINATIONS = 21 // n ≤ 21 → enumera tudo
 
-export function optimizeFiveGamesV2(selected: number[]): FiveGamesResult {
+/**
+ * Meta de otimização do Modo 5 Jogos. Ajusta os pesos internos
+ * do algoritmo guloso de seleção:
+ *  - cobertura: máxima cobertura do grupo (prioriza dezenas novas)
+ *  - score:      prioriza o score probabilístico individual
+ *  - sobrepos:   penaliza repetição de dezenas entre jogos
+ */
+export type OptimizationMeta = 'cobertura' | 'equilibrado' | 'score'
+
+export interface OptimizationWeights {
+  score: number
+  cobertura: number
+  sobreposicao: number
+}
+
+/**
+ * Pesos por meta. Equilibrado é o padrão (comportamento atual).
+ */
+export const META_WEIGHTS: Record<OptimizationMeta, OptimizationWeights> = {
+  cobertura: { score: 1, cobertura: 6, sobreposicao: 2 },
+  equilibrado: { score: 2, cobertura: 4, sobreposicao: 1 },
+  score: { score: 5, cobertura: 1, sobreposicao: 1 },
+}
+
+export const DEFAULT_META: OptimizationMeta = 'equilibrado'
+
+export function optimizeFiveGamesV2(
+  selected: number[],
+  meta: OptimizationMeta = DEFAULT_META,
+): FiveGamesResult {
+  const w = META_WEIGHTS[meta]
   const group = [...new Set(selected)].sort((a, b) => a - b)
   const groupSize = group.length
   const totalSlots = FIVE_GAMES_COUNT * FIVE_GAMES_SIZE // 25
@@ -355,8 +385,9 @@ export function optimizeFiveGamesV2(selected: number[]): FiveGamesResult {
         const u = usage.get(num) ?? 0
         overlapPenalty += u
       }
-      // Valor = score (peso 2) + cobertura nova (peso 4) - sobreposição (peso 1)
-      const value = cand.score * 2 + newCoverage * 4 - overlapPenalty * 1
+      // Valor = score + cobertura nova - sobreposição (pesos conforme a meta)
+      const value =
+        cand.score * w.score + newCoverage * w.cobertura - overlapPenalty * w.sobreposicao
       if (value > bestValue) {
         bestValue = value
         bestIdx = i
