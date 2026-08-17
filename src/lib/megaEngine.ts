@@ -275,6 +275,146 @@ export function optimizeFiveGames(selected: number[]): FiveGamesResult {
   }
 }
 
+/* ============================================================
+ * Score de Acertividade
+ * Pontua cada jogo de 0 a 100 com base em 5 critérios de 20pts:
+ * Paridade, Soma, Datas/EV, Distribuição por décadas e Sequência.
+ * ============================================================ */
+
+export interface ScoreColor {
+  /** Cor hex para a barra de progresso. */
+  color: string
+  /** Rótulo de classificação ("Ótimo", "Bom", "Regular", "Baixo"). */
+  label: string
+  /** Classe Tailwind de cor de texto. */
+  textColor: string
+  /** Classe Tailwind de cor de fundo (barra de progresso). */
+  bgClass: string
+}
+
+/** Paridade: equilibrio entre pares e ímpares (0-20pts). */
+function parityScore(game: number[]): number {
+  const even = game.filter((n) => n % 2 === 0).length
+  const odd = game.length - even
+  const diff = Math.abs(even - odd)
+  if (diff === 0) return 20 // 3/3
+  if (diff === 1) return 15 // 4/2 ou 2/4 (ou 3/2 em jogos de 5)
+  if (diff === 2) return 5 // 5/1 ou 1/5
+  return 0 // 6/0 ou 0/6
+}
+
+/** Soma: proximidade de ~180 (0-20pts). */
+function sumScore(game: number[]): number {
+  const sum = game.reduce((acc, curr) => acc + curr, 0)
+  if (sum >= 160 && sum <= 200) return 20
+  if ((sum >= 140 && sum <= 159) || (sum >= 201 && sum <= 220)) return 15
+  if ((sum >= 120 && sum <= 139) || (sum >= 221 && sum <= 240)) return 8
+  return 2
+}
+
+/** Datas/EV: menos números de calendário (1-31) é melhor (0-20pts). */
+function expectedValueScore(game: number[]): number {
+  const calendarNumbersCount = game.filter((n) => n >= 1 && n <= 31).length
+  if (calendarNumbersCount <= 1) return 20
+  if (calendarNumbersCount === 2) return 15
+  if (calendarNumbersCount === 3) return 8
+  return 0
+}
+
+/** Distribuição por décadas: 6 faixas de 10 (0-20pts). */
+function decadeScore(game: number[]): number {
+  const decades = new Array(6).fill(0)
+  game.forEach((n) => {
+    const idx = Math.min(Math.floor((n - 1) / 10), 5)
+    decades[idx] += 1
+  })
+  const occupied = decades.filter((c) => c > 0).length
+  let score = occupied * (20 / 6) // ~3.33 por década ocupada
+  // Penalidade: mais de 2 números na mesma década → -3 por número extra
+  decades.forEach((c) => {
+    if (c > 2) score -= (c - 2) * 3
+  })
+  return Math.max(0, Math.min(20, score))
+}
+
+/** Sequência: penaliza consecutivos (0-20pts). */
+function sequenceScore(game: number[]): number {
+  const sorted = [...game].sort((a, b) => a - b)
+  // Encontra runs máximos de consecutivos
+  let duplas = 0
+  let hasTripla = false
+  let runLen = 1
+  for (let i = 1; i < sorted.length; i++) {
+    if (sorted[i] === sorted[i - 1] + 1) {
+      runLen += 1
+    } else {
+      if (runLen >= 3) hasTripla = true
+      else if (runLen === 2) duplas += 1
+      runLen = 1
+    }
+  }
+  if (runLen >= 3) hasTripla = true
+  else if (runLen === 2) duplas += 1
+
+  if (hasTripla) return 0
+  if (duplas === 0) return 20
+  if (duplas === 1) return 12
+  return 6 // 2+ duplas separadas
+}
+
+/**
+ * Calcula o Score de Acertividade de um jogo (0-100).
+ * Soma de 5 critérios de 20 pontos cada, arredondada para inteiro.
+ */
+export function calculateGameScore(game: number[]): number {
+  if (!game || game.length === 0) return 0
+  const total =
+    parityScore(game) +
+    sumScore(game) +
+    expectedValueScore(game) +
+    decadeScore(game) +
+    sequenceScore(game)
+  return Math.round(Math.max(0, Math.min(100, total)))
+}
+
+/**
+ * Retorna a cor/label de classificação do score.
+ * ≥75 = verde ("Ótimo"), ≥55 = âmbar ("Bom"),
+ * ≥35 = laranja ("Regular"), <35 = vermelho ("Baixo").
+ */
+export function getScoreColor(score: number): ScoreColor {
+  if (score >= 75) {
+    return {
+      color: '#10b981',
+      label: 'Ótimo',
+      textColor: 'text-emerald-400',
+      bgClass: 'bg-emerald-500',
+    }
+  }
+  if (score >= 55) {
+    return {
+      color: '#f59e0b',
+      label: 'Bom',
+      textColor: 'text-amber-400',
+      bgClass: 'bg-amber-500',
+    }
+  }
+  if (score >= 35) {
+    return {
+      color: '#f97316',
+      label: 'Regular',
+      textColor: 'text-orange-400',
+      bgClass: 'bg-orange-500',
+    }
+  }
+  return {
+    color: '#ef4444',
+    label: 'Baixo',
+    textColor: 'text-red-400',
+    bgClass: 'bg-red-500',
+  }
+}
+
 /**
  * Exporta os 5 jogos otimizados para um arquivo .txt formatado.
  */

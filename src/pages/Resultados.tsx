@@ -26,6 +26,8 @@ import {
   formatCurrencyBRL,
   formatNumberBR,
   formatGameString,
+  calculateGameScore,
+  getScoreColor,
 } from '@/lib/megaEngine'
 
 const ITEMS_PER_PAGE = 24
@@ -394,10 +396,8 @@ export default function Resultados() {
                     ))}
                   </div>
 
-                  {/* Formatted string representation */}
-                  <div className="mt-3 pt-2 border-t border-[#262c34]/60 text-[11px] text-zinc-400 font-mono text-center tracking-tight">
-                    {formatGameString(game)}
-                  </div>
+                  {/* Score de Acertividade */}
+                  <GameScoreBar game={game} />
                 </div>
               )
             })}
@@ -460,6 +460,32 @@ export default function Resultados() {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+/* ============================================================
+ * Score de Acertividade — barra de progresso por jogo
+ * ============================================================ */
+const GameScoreBar: React.FC<{ game: number[] }> = ({ game }) => {
+  const score = calculateGameScore(game)
+  const { textColor, bgClass, label } = getScoreColor(score)
+
+  return (
+    <div className="mt-2 pt-2 border-t border-[#262c34]/60 space-y-1">
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
+          Score de Acertividade
+        </span>
+        <span className={`text-[11px] font-extrabold ${textColor}`}>{score}%</span>
+      </div>
+      <div className="h-1 w-full rounded-full bg-[#1a1f2b] overflow-hidden">
+        <div
+          className={`h-full rounded-full ${bgClass} transition-all duration-300`}
+          style={{ width: `${score}%` }}
+        />
+      </div>
+      <div className={`text-[10px] font-bold ${textColor}`}>{label}</div>
     </div>
   )
 }
