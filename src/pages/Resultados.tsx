@@ -17,6 +17,7 @@ import {
   Sparkles,
   ArrowUpDown,
   BarChart3,
+  SlidersHorizontal,
 } from 'lucide-react'
 import { useMega } from '@/lib/MegaContext'
 import {
@@ -33,6 +34,8 @@ import {
 } from '@/lib/megaEngine'
 import { ScoreHistogram } from '@/components/ScoreHistogram'
 import { SimulacaoHistorica } from '@/components/SimulacaoHistorica'
+import { PrintableVersion, jogosComScore } from '@/components/PrintableVersion'
+import { ComparacaoConcurso } from '@/components/ComparacaoConcurso'
 
 const ITEMS_PER_PAGE = 24
 
@@ -53,6 +56,8 @@ export default function Resultados() {
   const [showToast, setShowToast] = useState(false)
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
   const [sortByScore, setSortByScore] = useState(false)
+  // Filtro por score mínimo (slider 0-100, step 5). 0 = mostra todos.
+  const [minScore, setMinScore] = useState(0)
 
   // Redirect to / if no valid numbers selected
   useEffect(() => {
@@ -94,18 +99,38 @@ export default function Resultados() {
     }
   }, [selectedNumbers, filters])
 
+  // === Aplicação do filtro por score mínimo (slider) ===
+  // Filtra os jogos que passaram pelos filtros originais mantendo apenas
+  // aqueles cujo score ≥ minScore. Reflete em métricas, histograma e
+  // exportação.
+  const scoreFilteredCombinations = useMemo(() => {
+    if (minScore <= 0) return filteredCombinations
+    return filteredCombinations.filter((g) => calculateGameScore(g) >= minScore)
+  }, [filteredCombinations, minScore])
+
+  // Métricas dinâmicas conforme o filtro de score
+  const scoreFilteredEconomy = useMemo(() => {
+    return (totalRaw - scoreFilteredCombinations.length) * PRICE_PER_GAME
+  }, [totalRaw, scoreFilteredCombinations.length])
+
+  const scoreFilteredCost = useMemo(() => {
+    return scoreFilteredCombinations.length * PRICE_PER_GAME
+  }, [scoreFilteredCombinations.length])
+
   // Ordem de exibição (geração ou por score)
   const orderedCombinations = useMemo(() => {
-    if (!sortByScore) return filteredCombinations
-    return [...filteredCombinations].sort((a, b) => calculateGameScore(b) - calculateGameScore(a))
-  }, [filteredCombinations, sortByScore])
+    if (!sortByScore) return scoreFilteredCombinations
+    return [...scoreFilteredCombinations].sort(
+      (a, b) => calculateGameScore(b) - calculateGameScore(a),
+    )
+  }, [scoreFilteredCombinations, sortByScore])
 
-  // Score médio de todos os jogos filtrados
+  // Score médio dos jogos filtrados (após filtro de score)
   const averageScore = useMemo(() => {
-    if (filteredCombinations.length === 0) return 0
-    const sum = filteredCombinations.reduce((acc, g) => acc + calculateGameScore(g), 0)
-    return Math.round(sum / filteredCombinations.length)
-  }, [filteredCombinations])
+    if (scoreFilteredCombinations.length === 0) return 0
+    const sum = scoreFilteredCombinations.reduce((acc, g) => acc + calculateGameScore(g), 0)
+    return Math.round(sum / scoreFilteredCombinations.length)
+  }, [scoreFilteredCombinations])
 
   // Meta de cor do score médio (container + texto + rótulo)
   const scoreColorMeta = useMemo(() => {
@@ -129,14 +154,14 @@ export default function Resultados() {
     return orderedCombinations.slice(startIndex, endIndex)
   }, [orderedCombinations, startIndex, endIndex])
 
-  // Reset page when filters, numbers or sort change
+  // Reset page when filters, numbers, sort or score filter change
   useEffect(() => {
     setCurrentPage(1)
-  }, [selectedNumbers, filters, sortByScore])
+  }, [selectedNumbers, filters, sortByScore, minScore])
 
-  // Export games to .txt file
+  // Export games to .txt file — apenas jogos que passam pelo filtro de score
   const handleExportTxt = () => {
-    if (filteredCombinations.length === 0) return
+    if (scoreFilteredCombinations.length === 0) return
 
     const now = new Date()
     const day = String(now.getDate()).padStart(2, '0')
@@ -151,17 +176,17 @@ export default function Resultados() {
       `# Otimizador Estratégico Mega-Sena — Jogos Gerados`,
       `# Data de Geração: ${dateFormatted} às ${hours}:${minutes}`,
       `# Dezenas do Grupo (${selectedNumbers.length}): ${selectedNumbers.map(formatTwoDigits).join(', ')}`,
-      `# Combinações Brutas: ${formatNumberBR(totalRaw)} | Jogos Filtrados: ${formatNumberBR(filteredCombinations.length)}`,
-      `# Economia Gerada: ${formatCurrencyBRL(economy)} | Custo Total: ${formatCurrencyBRL(totalCost)}`,
+      `# Combinações Brutas: ${formatNumberBR(totalRaw)} | Jogos Filtrados: ${formatNumberBR(scoreFilteredCombinations.length)}`,
+      `# Economia Gerada: ${formatCurrencyBRL(scoreFilteredEconomy)} | Custo Total: ${formatCurrencyBRL(scoreFilteredCost)}`,
       `# Filtros Ativos: ${Object.entries(filters)
         .filter(([, v]) => v)
         .map(([k]) => k)
-        .join(', ')}`,
+        .join(', ')}${minScore > 0 ? `, scoreMin=${minScore}` : ''}`,
       `# ==========================================================`,
       ``,
     ].join('\n')
 
-    const body = filteredCombinations
+    const body = scoreFilteredCombinations
       .map((game, idx) => `Jogo ${String(idx + 1).padStart(4, '0')}: ${formatGameString(game)}`)
       .join('\n')
 
@@ -171,7 +196,7 @@ export default function Resultados() {
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `MegaSena_Desdobramento_${day}_${month}_${year}_${filteredCombinations.length}jogos.txt`
+    link.download = `MegaSena_Desdobramento_${day}_${month}_${year}_${scoreFilteredCombinations.length}jogos.txt`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -196,6 +221,14 @@ export default function Resultados() {
     setCopiedIndex(index)
     setTimeout(() => setCopiedIndex(null), 1500)
   }
+
+  // Marcadores do slider de score
+  const scoreMarks = [
+    { valor: 0, label: '0 (Todos)' },
+    { valor: 40, label: '40 (Regular)' },
+    { valor: 60, label: '60 (Bom)' },
+    { valor: 80, label: '80 (Ótimo)' },
+  ]
 
   if (!selectedNumbers || selectedNumbers.length < 6) {
     return null
@@ -237,6 +270,68 @@ export default function Resultados() {
         </div>
       </section>
 
+      {/* === Controle de Filtro por Score (Slider) === */}
+      <section className="surface-card rounded-2xl p-5 sm:p-6 border border-[#262c34] shadow-lg space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+              <SlidersHorizontal className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-white tracking-tight">Score Mínimo</h3>
+              <p className="text-xs text-zinc-400">Filtre os jogos pelo score probabilístico</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span
+              className={`text-2xl font-extrabold ${
+                minScore > 0 ? 'text-emerald-400' : 'text-zinc-300'
+              }`}
+            >
+              {minScore}%
+            </span>
+            <span className="text-[11px] px-2.5 py-1 rounded-full border bg-emerald-950/40 border-emerald-500/30 text-emerald-300 font-semibold whitespace-nowrap">
+              Mostrando {formatNumberBR(scoreFilteredCombinations.length)} de{' '}
+              {formatNumberBR(filteredCombinations.length)} jogos
+              {minScore > 0 ? ` (Score ≥ ${minScore}%)` : ' (Score ≥ 0%)'}
+            </span>
+          </div>
+        </div>
+
+        {/* Slider estilizado */}
+        <div className="space-y-2">
+          <input
+            type="range"
+            min={0}
+            max={100}
+            step={5}
+            value={minScore}
+            onChange={(e) => setMinScore(parseInt(e.target.value, 10))}
+            className="w-full h-2 rounded-lg appearance-none cursor-pointer bg-[#1a1f2b] accent-emerald-500 mega-score-slider"
+            style={{
+              background: `linear-gradient(to right, #10b981 0%, #10b981 ${minScore}%, #1a1f2b ${minScore}%, #1a1f2b 100%)`,
+            }}
+            aria-label="Score mínimo"
+          />
+          {/* Marcadores visuais */}
+          <div className="flex justify-between px-0.5">
+            {scoreMarks.map((m) => (
+              <button
+                key={m.valor}
+                type="button"
+                onClick={() => setMinScore(m.valor)}
+                className={`text-[10px] font-semibold transition-colors hover:text-emerald-300 ${
+                  minScore === m.valor ? 'text-emerald-400' : 'text-zinc-500'
+                }`}
+                title={`Definir score mínimo em ${m.valor}%`}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Dashboard Metrics (5 Cards with staggered fade-in) */}
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {/* Card 1: Total Combinations */}
@@ -258,7 +353,7 @@ export default function Resultados() {
           <div className="text-xs text-zinc-400 mt-1">Sem filtros</div>
         </div>
 
-        {/* Card 2: After Filters */}
+        {/* Card 2: After Filters (score-filtered) */}
         <div
           className="surface-card rounded-2xl p-5 border border-[#262c34] relative overflow-hidden shadow-md animate-fade-in-up"
           style={{ animationDelay: '80ms' }}
@@ -273,14 +368,16 @@ export default function Resultados() {
           </div>
           <div
             className={`text-2xl sm:text-3xl font-extrabold tracking-tight ${
-              filteredCombinations.length > 0 ? 'text-emerald-400' : 'text-red-400'
+              scoreFilteredCombinations.length > 0 ? 'text-emerald-400' : 'text-red-400'
             }`}
           >
-            {formatNumberBR(filteredCombinations.length)}
+            {formatNumberBR(scoreFilteredCombinations.length)}
           </div>
           <div className="text-xs mt-1">
-            {filteredCombinations.length > 0 ? (
-              <span className="text-zinc-400">Jogos válidos</span>
+            {scoreFilteredCombinations.length > 0 ? (
+              <span className="text-zinc-400">
+                {minScore > 0 ? `Com score ≥ ${minScore}%` : 'Jogos válidos'}
+              </span>
             ) : (
               <span className="text-red-400 font-medium">
                 Nenhum jogo válido — ajuste seus filtros
@@ -289,7 +386,7 @@ export default function Resultados() {
           </div>
         </div>
 
-        {/* Card 3: Economy Generated */}
+        {/* Card 3: Economy Generated (score-filtered) */}
         <div
           className="surface-card rounded-2xl p-5 border border-[#262c34] relative overflow-hidden shadow-md animate-fade-in-up"
           style={{ animationDelay: '160ms' }}
@@ -303,12 +400,12 @@ export default function Resultados() {
             </div>
           </div>
           <div className="text-2xl sm:text-3xl font-extrabold text-emerald-400 tracking-tight">
-            {formatCurrencyBRL(economy)}
+            {formatCurrencyBRL(scoreFilteredEconomy)}
           </div>
           <div className="text-xs text-zinc-400 mt-1">Diferença × R$ 5,00 por jogo</div>
         </div>
 
-        {/* Card 4: Total Cost */}
+        {/* Card 4: Total Cost (score-filtered) */}
         <div
           className="surface-card rounded-2xl p-5 border border-[#262c34] relative overflow-hidden shadow-md animate-fade-in-up"
           style={{ animationDelay: '240ms' }}
@@ -322,7 +419,7 @@ export default function Resultados() {
             </div>
           </div>
           <div className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-            {formatCurrencyBRL(totalCost)}
+            {formatCurrencyBRL(scoreFilteredCost)}
           </div>
           <div className="text-xs text-zinc-400 mt-1">Jogos válidos × R$ 5,00</div>
         </div>
@@ -355,17 +452,22 @@ export default function Resultados() {
         </div>
       </section>
 
-      {/* Histograma de distribuição dos scores */}
-      {filteredCombinations.length > 0 && (
+      {/* Histograma de distribuição dos scores (apenas jogos filtrados por score) */}
+      {scoreFilteredCombinations.length > 0 && (
         <ScoreHistogram
-          scores={filteredCombinations.map((g) => calculateGameScore(g))}
+          scores={scoreFilteredCombinations.map((g) => calculateGameScore(g))}
           scoreMedio={averageScore}
         />
       )}
 
-      {/* Simulação Histórica */}
-      {filteredCombinations.length > 0 && (
-        <SimulacaoHistorica jogos={filteredCombinations} conjunto={false} />
+      {/* Simulação Histórica (apenas jogos filtrados por score) */}
+      {scoreFilteredCombinations.length > 0 && (
+        <SimulacaoHistorica jogos={scoreFilteredCombinations} conjunto={false} />
+      )}
+
+      {/* Comparação com concurso específico */}
+      {scoreFilteredCombinations.length > 0 && (
+        <ComparacaoConcurso jogos={scoreFilteredCombinations} />
       )}
 
       {/* Action Header: Games Title + Export Button */}
@@ -378,7 +480,7 @@ export default function Resultados() {
             <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
               Jogos Gerados
               <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#1a1f2b] border border-[#262c34] text-emerald-400">
-                {formatNumberBR(filteredCombinations.length)} jogos
+                {formatNumberBR(scoreFilteredCombinations.length)} jogos
               </span>
             </h2>
             <p className="text-xs text-zinc-400">
@@ -387,8 +489,8 @@ export default function Resultados() {
           </div>
         </div>
 
-        {/* Export Button + Sort toggle */}
-        {filteredCombinations.length > 0 && (
+        {/* Export Button + Sort toggle + Versão Impressa */}
+        {scoreFilteredCombinations.length > 0 && (
           <div className="flex items-center gap-2 flex-wrap">
             <button
               type="button"
@@ -403,6 +505,10 @@ export default function Resultados() {
               <ArrowUpDown className="w-4 h-4" />
               <span>{sortByScore ? 'Ordenado por Score' : 'Ordenar por Score'}</span>
             </button>
+            <PrintableVersion
+              jogos={jogosComScore(scoreFilteredCombinations)}
+              modo="Modo Desdobramento"
+            />
             <button
               type="button"
               onClick={handleExportTxt}
@@ -416,27 +522,43 @@ export default function Resultados() {
       </section>
 
       {/* Empty State vs Games Grid */}
-      {filteredCombinations.length === 0 ? (
+      {scoreFilteredCombinations.length === 0 ? (
         <section className="surface-card rounded-2xl p-8 sm:p-12 text-center border border-[#262c34] space-y-4 max-w-xl mx-auto shadow-xl my-8">
           <div className="w-16 h-16 rounded-full bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 mx-auto shadow-[0_0_20px_rgba(245,158,11,0.2)]">
             <AlertTriangle className="w-8 h-8 text-amber-400" />
           </div>
           <div className="space-y-2">
-            <h3 className="text-lg font-bold text-white">Nenhum jogo encontrado</h3>
+            <h3 className="text-lg font-bold text-white">
+              {minScore > 0 ? 'Nenhum jogo com score suficiente' : 'Nenhum jogo encontrado'}
+            </h3>
             <p className="text-sm text-zinc-400 leading-relaxed">
-              Nenhum jogo atende aos filtros selecionados. Volte e ajuste as dezenas ou desative
-              alguns filtros.
+              {minScore > 0
+                ? `Nenhum jogo atinge score ≥ ${minScore}%. Diminua o score mínimo no slider acima.`
+                : 'Nenhum jogo atende aos filtros selecionados. Volte e ajuste as dezenas ou desative alguns filtros.'}
             </p>
           </div>
-          <div className="pt-2">
-            <Link
-              to="/"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl emerald-gradient text-white font-bold text-sm emerald-glow hover:translate-y-[-2px] transition-all"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Voltar e Ajustar</span>
-            </Link>
-          </div>
+          {minScore > 0 ? (
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => setMinScore(0)}
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl emerald-gradient text-white font-bold text-sm emerald-glow hover:translate-y-[-2px] transition-all"
+              >
+                <SlidersHorizontal className="w-4 h-4" />
+                <span>Limpar Filtro de Score</span>
+              </button>
+            </div>
+          ) : (
+            <div className="pt-2">
+              <Link
+                to="/"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl emerald-gradient text-white font-bold text-sm emerald-glow hover:translate-y-[-2px] transition-all"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Voltar e Ajustar</span>
+              </Link>
+            </div>
+          )}
         </section>
       ) : (
         <section className="space-y-6">
@@ -497,7 +619,7 @@ export default function Resultados() {
                 Mostrando <strong className="text-white">{startIndex + 1}</strong>–
                 <strong className="text-white">{endIndex}</strong> de{' '}
                 <strong className="text-white">
-                  {formatNumberBR(filteredCombinations.length)}
+                  {formatNumberBR(scoreFilteredCombinations.length)}
                 </strong>{' '}
                 jogos
               </div>

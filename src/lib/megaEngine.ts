@@ -132,6 +132,230 @@ export function formatNumberBR(num: number): string {
 }
 
 /* ============================================================
+ * Coeficiente Binomial — C(n, k)
+ * Algoritmo multiplicativo: evita overflow de fatoriais e é
+ * numericamente estável para os cálculos hipergeométricos da
+ * Mega-Sena (N=60). Retorna o valor exato como Number (preciso
+ * até 2^53, suficiente para C(60,30)).
+ * ============================================================ */
+export function binomialCoefficient(n: number, k: number): number {
+  if (k < 0 || k > n) return 0
+  if (k === 0 || k === n) return 1
+  // Simetria: C(n,k) == C(n, n-k)
+  const kk = Math.min(k, n - k)
+  let result = 1
+  for (let i = 1; i <= kk; i++) {
+    // result = result * (n - kk + i) / i
+    // Multiplica antes e divide a cada passo mantendo inteiro
+    result = (result * (n - kk + i)) / i
+  }
+  return Math.round(result)
+}
+
+/* ============================================================
+ * Score de Acertividade (Motor Probabilístico)
+ * Pontua cada jogo de 0 a 100 com base em 5 critérios de 20pts,
+ * cada um fundamentado em matemática probabilística rigorosa:
+ *   a) Paridade ........... Distribuição Hipergeométrica
+ *   b) Soma ................ Z-Score Gaussiano
+ *   c) Datas/EV ............ Probabilidade Binomial
+ *   d) Décadas ............. Entropia de Shannon
+ *   e) Gaps ................ Teste de Regularidade (CV dos gaps)
+ * ============================================================ */
+
+export interface ScoreColor {
+  /** Cor hex para a barra de progresso. */
+  color: string
+  /** Rótulo de classificação ("Ótimo", "Bom", "Regular", "Baixo"). */
+  label: string
+  /** Classe Tailwind de cor de texto. */
+  textColor: string
+  /** Classe Tailwind de cor de fundo (barra de progresso). */
+  bgClass: string
+}
+
+/**
+ * a) Paridade — Distribuição Hipergeométrica (0-20pts)
+ *
+ * Em 60 dezenas há K=30 pares (e 30 ímpares). A divisão par/ímpar
+ * num jogo de tamanho n segue uma hipergeométrica:
+ *   P(evens) = C(30, evens) * C(30, odds) / C(60, n)
+ * Score = 20 * (P_observada / P_máxima), onde P_máxima é a
+ * probabilidade da divisão mais equilibrada possível para n.
+ */
+function parityScore(game: number[]): number {
+  const n = game.length
+  if (n === 0) return 0
+  const evens = game.filter((num) => num % 2 === 0).length
+  const odds = n - evens
+
+  // Probabilidade exata da divisão observada
+  const total = binomialCoefficient(60, n)
+  const probObserved = (binomialCoefficient(30, evens) * binomialCoefficient(30, odds)) / total
+
+  // Probabilidade máxima: divisão mais equilibrada (evens ≈ n/2)
+  const balancedEven = Math.floor(n / 2)
+  const balancedOdd = n - balancedEven
+  const probMax =
+    (binomialCoefficient(30, balancedEven) * binomialCoefficient(30, balancedOdd)) / total
+
+  const score = probMax > 0 ? 20 * (probObserved / probMax) : 0
+  return Math.max(0, Math.min(20, score))
+}
+
+/**
+ * b) Soma — Z-Score Gaussiano (0-20pts)
+ *
+ * A soma de n números uniformes [1,60] tem:
+ *   μ = n * 30.5
+ *   σ = sqrt(n * (60² - 1) / 12)   (variância da uniforme discreta)
+ * z = |soma - μ| / σ. Quanto menor o z, mais próximo da média.
+ * Score = max(0, 20 - z * 8).
+ */
+function sumScore(game: number[]): number {
+  const n = game.length
+  if (n === 0) return 0
+  const sum = game.reduce((acc, curr) => acc + curr, 0)
+  const mu = n * 30.5
+  const sigma = Math.sqrt((n * (60 * 60 - 1)) / 12)
+  const z = Math.abs(sum - mu) / sigma
+  return Math.max(0, 20 - z * 8)
+}
+
+/**
+ * c) Datas/EV — Probabilidade Binomial (0-20pts)
+ *
+ * Probabilidade de uma dezena ser de calendário (1-31): p = 31/60.
+ * Número esperado de dezenas de calendário: n * p.
+ * Score máximo quando ≤ 1 dezena de calendário, decaindo linearmente
+ * com a distância acima do esperado até 0.
+ */
+function expectedValueScore(game: number[]): number {
+  const n = game.length
+  if (n === 0) return 0
+  const p = 31 / 60
+  const calendarCount = game.filter((num) => num >= 1 && num <= 31).length
+
+  // Score máximo quando há no máximo 1 dezena de calendário
+  if (calendarCount <= 1) return 20
+
+  // Esperado = n * p. Distância acima do esperado penaliza o score.
+  const expected = n * p
+  const excess = Math.max(0, calendarCount - Math.max(1, expected))
+  // Decai ~6 pts por dezena acima do esperado/limite
+  const score = 20 - excess * 6
+  return Math.max(0, Math.min(20, score))
+}
+
+/**
+ * d) Entropia de Décadas (0-20pts)
+ *
+ * Divide [1,60] em 6 faixas de 10. Calcula a entropia de Shannon
+ * H = -Σ(pi * ln(pi)) com pi = count_i / n.
+ * Entropia máxima = ln(6) ≈ 1.791 (distribuição uniforme).
+ * Score = 20 * (H / ln(6)).
+ */
+function decadeScore(game: number[]): number {
+  const n = game.length
+  if (n === 0) return 0
+  const decades = new Array(6).fill(0)
+  game.forEach((num) => {
+    const idx = Math.min(Math.floor((num - 1) / 10), 5)
+    decades[idx] += 1
+  })
+
+  let entropy = 0
+  decades.forEach((c) => {
+    if (c > 0) {
+      const pi = c / n
+      entropy -= pi * Math.log(pi)
+    }
+  })
+
+  const maxEntropy = Math.log(6) // ≈ 1.791
+  const score = maxEntropy > 0 ? 20 * (entropy / maxEntropy) : 0
+  return Math.max(0, Math.min(20, score))
+}
+
+/**
+ * e) Uniformidade de Gaps — Teste de Regularidade (0-20pts)
+ *
+ * Para n números ordenados há n-1 gaps. O gap esperado sob
+ * distribuição uniforme é ≈ (60 - n) / (n + 1). O coeficiente de
+ * variação (CV = desvio_padrão / média) dos gaps aproxima 1 para
+ * um RNG uniforme (gaps ~ exponencial). Score = max(0, 20 - |CV-1|*15).
+ */
+function gapScore(game: number[]): number {
+  const n = game.length
+  if (n < 2) return 0
+  const sorted = [...game].sort((a, b) => a - b)
+  const gaps: number[] = []
+  for (let i = 1; i < n; i++) {
+    gaps.push(sorted[i] - sorted[i - 1])
+  }
+  const mean = gaps.reduce((acc, g) => acc + g, 0) / gaps.length
+  if (mean === 0) return 0
+  const variance = gaps.reduce((acc, g) => acc + (g - mean) ** 2, 0) / gaps.length
+  const stdDev = Math.sqrt(variance)
+  const cv = stdDev / mean
+  return Math.max(0, 20 - Math.abs(cv - 1) * 15)
+}
+
+/**
+ * Calcula o Score de Acertividade de um jogo (0-100).
+ * Soma de 5 critérios probabilísticos de 20 pontos cada,
+ * arredondada para inteiro.
+ */
+export function calculateGameScore(game: number[]): number {
+  if (!game || game.length === 0) return 0
+  const total =
+    parityScore(game) +
+    sumScore(game) +
+    expectedValueScore(game) +
+    decadeScore(game) +
+    gapScore(game)
+  return Math.round(Math.max(0, Math.min(100, total)))
+}
+
+/**
+ * Retorna a cor/label de classificação do score.
+ * ≥80 = verde ("Ótimo"), ≥60 = âmbar ("Bom"),
+ * ≥40 = laranja ("Regular"), <40 = vermelho ("Baixo").
+ */
+export function getScoreColor(score: number): ScoreColor {
+  if (score >= 80) {
+    return {
+      color: '#10b981',
+      label: 'Ótimo',
+      textColor: 'text-emerald-400',
+      bgClass: 'bg-emerald-500',
+    }
+  }
+  if (score >= 60) {
+    return {
+      color: '#f59e0b',
+      label: 'Bom',
+      textColor: 'text-amber-400',
+      bgClass: 'bg-amber-500',
+    }
+  }
+  if (score >= 40) {
+    return {
+      color: '#f97316',
+      label: 'Regular',
+      textColor: 'text-orange-400',
+      bgClass: 'bg-orange-500',
+    }
+  }
+  return {
+    color: '#ef4444',
+    label: 'Baixo',
+    textColor: 'text-red-400',
+    bgClass: 'bg-red-500',
+  }
+}
+
+/* ============================================================
  * Modo "5 Jogos" — otimizador de cobertura
  * Gera exatamente 5 jogos de 5 dezenas cada a partir de um
  * grupo de dezenas selecionadas, maximizando a cobertura do
@@ -425,25 +649,30 @@ export function optimizeFiveGamesV2(
   }
 }
 
-/* ============================================================
- * Coeficiente Binomial — C(n, k)
- * Algoritmo multiplicativo: evita overflow de fatoriais e é
- * numericamente estável para os cálculos hipergeométricos da
- * Mega-Sena (N=60). Retorna o valor exato como Number (preciso
- * até 2^53, suficiente para C(60,30)).
- * ============================================================ */
-export function binomialCoefficient(n: number, k: number): number {
-  if (k < 0 || k > n) return 0
-  if (k === 0 || k === n) return 1
-  // Simetria: C(n,k) == C(n, n-k)
-  const kk = Math.min(k, n - k)
-  let result = 1
-  for (let i = 1; i <= kk; i++) {
-    // result = result * (n - kk + i) / i
-    // Multiplica antes e divide a cada passo mantendo inteiro
-    result = (result * (n - kk + i)) / i
+/**
+ * Recalcula o FiveGamesResult a partir de jogos editados manualmente
+ * (após drag-and-drop). Recalcula cobertura, cobertas/fora e scores,
+ * mantendo o mesmo shape retornado pelo otimizador.
+ */
+export function recomputeFiveGamesResult(games: number[][], group: number[]): FiveGamesResult {
+  const sortedGroup = [...new Set(group)].sort((a, b) => a - b)
+  const groupSize = sortedGroup.length
+  const totalSlots = FIVE_GAMES_COUNT * FIVE_GAMES_SIZE
+  const coveredSet = new Set<number>()
+  games.forEach((g) => g.forEach((n) => coveredSet.add(n)))
+  const covered = [...coveredSet].sort((a, b) => a - b)
+  const uncovered = sortedGroup.filter((n) => !coveredSet.has(n))
+  const coveragePercent = groupSize > 0 ? Math.round((coveredSet.size / groupSize) * 1000) / 10 : 0
+  const scores = games.map((g) => calculateGameScore(g))
+  return {
+    games: games.map((g) => [...g].sort((a, b) => a - b)),
+    covered,
+    uncovered,
+    coveragePercent,
+    groupSize,
+    totalSlots,
+    scores,
   }
-  return Math.round(result)
 }
 
 /* ============================================================
@@ -479,209 +708,6 @@ export function probabilityAtLeastFourPlus(games: number[][]): number {
     complement *= 1 - p4plus
   }
   return Math.max(0, 1 - complement)
-}
-
-/* ============================================================
- * Score de Acertividade (Motor Probabilístico)
- * Pontua cada jogo de 0 a 100 com base em 5 critérios de 20pts,
- * cada um fundamentado em matemática probabilística rigorosa:
- *   a) Paridade ........... Distribuição Hipergeométrica
- *   b) Soma ................ Z-Score Gaussiano
- *   c) Datas/EV ............ Probabilidade Binomial
- *   d) Décadas ............. Entropia de Shannon
- *   e) Gaps ................ Teste de Regularidade (CV dos gaps)
- * ============================================================ */
-
-export interface ScoreColor {
-  /** Cor hex para a barra de progresso. */
-  color: string
-  /** Rótulo de classificação ("Ótimo", "Bom", "Regular", "Baixo"). */
-  label: string
-  /** Classe Tailwind de cor de texto. */
-  textColor: string
-  /** Classe Tailwind de cor de fundo (barra de progresso). */
-  bgClass: string
-}
-
-/**
- * a) Paridade — Distribuição Hipergeométrica (0-20pts)
- *
- * Em 60 dezenas há K=30 pares (e 30 ímpares). A divisão par/ímpar
- * num jogo de tamanho n segue uma hipergeométrica:
- *   P(evens) = C(30, evens) * C(30, odds) / C(60, n)
- * Score = 20 * (P_observada / P_máxima), onde P_máxima é a
- * probabilidade da divisão mais equilibrada possível para n.
- */
-function parityScore(game: number[]): number {
-  const n = game.length
-  if (n === 0) return 0
-  const evens = game.filter((num) => num % 2 === 0).length
-  const odds = n - evens
-
-  // Probabilidade exata da divisão observada
-  const total = binomialCoefficient(60, n)
-  const probObserved = (binomialCoefficient(30, evens) * binomialCoefficient(30, odds)) / total
-
-  // Probabilidade máxima: divisão mais equilibrada (evens ≈ n/2)
-  const balancedEven = Math.floor(n / 2)
-  const balancedOdd = n - balancedEven
-  const probMax =
-    (binomialCoefficient(30, balancedEven) * binomialCoefficient(30, balancedOdd)) / total
-
-  const score = probMax > 0 ? 20 * (probObserved / probMax) : 0
-  return Math.max(0, Math.min(20, score))
-}
-
-/**
- * b) Soma — Z-Score Gaussiano (0-20pts)
- *
- * A soma de n números uniformes [1,60] tem:
- *   μ = n * 30.5
- *   σ = sqrt(n * (60² - 1) / 12)   (variância da uniforme discreta)
- * z = |soma - μ| / σ. Quanto menor o z, mais próximo da média.
- * Score = max(0, 20 - z * 8).
- */
-function sumScore(game: number[]): number {
-  const n = game.length
-  if (n === 0) return 0
-  const sum = game.reduce((acc, curr) => acc + curr, 0)
-  const mu = n * 30.5
-  const sigma = Math.sqrt((n * (60 * 60 - 1)) / 12)
-  const z = Math.abs(sum - mu) / sigma
-  return Math.max(0, 20 - z * 8)
-}
-
-/**
- * c) Datas/EV — Probabilidade Binomial (0-20pts)
- *
- * Probabilidade de uma dezena ser de calendário (1-31): p = 31/60.
- * Número esperado de dezenas de calendário: n * p.
- * Score máximo quando ≤ 1 dezena de calendário, decaindo linearmente
- * com a distância acima do esperado até 0.
- */
-function expectedValueScore(game: number[]): number {
-  const n = game.length
-  if (n === 0) return 0
-  const p = 31 / 60
-  const calendarCount = game.filter((num) => num >= 1 && num <= 31).length
-
-  // Score máximo quando há no máximo 1 dezena de calendário
-  if (calendarCount <= 1) return 20
-
-  // Esperado = n * p. Distância acima do esperado penaliza o score.
-  const expected = n * p
-  const excess = Math.max(0, calendarCount - Math.max(1, expected))
-  // Decai ~6 pts por dezena acima do esperado/limite
-  const score = 20 - excess * 6
-  return Math.max(0, Math.min(20, score))
-}
-
-/**
- * d) Entropia de Décadas (0-20pts)
- *
- * Divide [1,60] em 6 faixas de 10. Calcula a entropia de Shannon
- * H = -Σ(pi * ln(pi)) com pi = count_i / n.
- * Entropia máxima = ln(6) ≈ 1.791 (distribuição uniforme).
- * Score = 20 * (H / ln(6)).
- */
-function decadeScore(game: number[]): number {
-  const n = game.length
-  if (n === 0) return 0
-  const decades = new Array(6).fill(0)
-  game.forEach((num) => {
-    const idx = Math.min(Math.floor((num - 1) / 10), 5)
-    decades[idx] += 1
-  })
-
-  let entropy = 0
-  decades.forEach((c) => {
-    if (c > 0) {
-      const pi = c / n
-      entropy -= pi * Math.log(pi)
-    }
-  })
-
-  const maxEntropy = Math.log(6) // ≈ 1.791
-  const score = maxEntropy > 0 ? 20 * (entropy / maxEntropy) : 0
-  return Math.max(0, Math.min(20, score))
-}
-
-/**
- * e) Uniformidade de Gaps — Teste de Regularidade (0-20pts)
- *
- * Para n números ordenados há n-1 gaps. O gap esperado sob
- * distribuição uniforme é ≈ (60 - n) / (n + 1). O coeficiente de
- * variação (CV = desvio_padrão / média) dos gaps aproxima 1 para
- * um RNG uniforme (gaps ~ exponencial). Score = max(0, 20 - |CV-1|*15).
- */
-function gapScore(game: number[]): number {
-  const n = game.length
-  if (n < 2) return 0
-  const sorted = [...game].sort((a, b) => a - b)
-  const gaps: number[] = []
-  for (let i = 1; i < n; i++) {
-    gaps.push(sorted[i] - sorted[i - 1])
-  }
-  const mean = gaps.reduce((acc, g) => acc + g, 0) / gaps.length
-  if (mean === 0) return 0
-  const variance = gaps.reduce((acc, g) => acc + (g - mean) ** 2, 0) / gaps.length
-  const stdDev = Math.sqrt(variance)
-  const cv = stdDev / mean
-  return Math.max(0, 20 - Math.abs(cv - 1) * 15)
-}
-
-/**
- * Calcula o Score de Acertividade de um jogo (0-100).
- * Soma de 5 critérios probabilísticos de 20 pontos cada,
- * arredondada para inteiro.
- */
-export function calculateGameScore(game: number[]): number {
-  if (!game || game.length === 0) return 0
-  const total =
-    parityScore(game) +
-    sumScore(game) +
-    expectedValueScore(game) +
-    decadeScore(game) +
-    gapScore(game)
-  return Math.round(Math.max(0, Math.min(100, total)))
-}
-
-/**
- * Retorna a cor/label de classificação do score.
- * ≥80 = verde ("Ótimo"), ≥60 = âmbar ("Bom"),
- * ≥40 = laranja ("Regular"), <40 = vermelho ("Baixo").
- */
-export function getScoreColor(score: number): ScoreColor {
-  if (score >= 80) {
-    return {
-      color: '#10b981',
-      label: 'Ótimo',
-      textColor: 'text-emerald-400',
-      bgClass: 'bg-emerald-500',
-    }
-  }
-  if (score >= 60) {
-    return {
-      color: '#f59e0b',
-      label: 'Bom',
-      textColor: 'text-amber-400',
-      bgClass: 'bg-amber-500',
-    }
-  }
-  if (score >= 40) {
-    return {
-      color: '#f97316',
-      label: 'Regular',
-      textColor: 'text-orange-400',
-      bgClass: 'bg-orange-500',
-    }
-  }
-  return {
-    color: '#ef4444',
-    label: 'Baixo',
-    textColor: 'text-red-400',
-    bgClass: 'bg-red-500',
-  }
 }
 
 /**

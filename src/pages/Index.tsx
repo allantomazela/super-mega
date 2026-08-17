@@ -31,6 +31,7 @@ import {
   calculateGameScore,
   getScoreColor,
   probabilityAtLeastFourPlus,
+  recomputeFiveGamesResult,
   FIVE_GAMES_MIN_SELECTION,
   FIVE_GAMES_MAX_SELECTION,
   FiveGamesResult,
@@ -40,6 +41,8 @@ import {
 } from '@/lib/megaEngine'
 import { ToggleSwitch } from '@/components/ToggleSwitch'
 import { SimulacaoHistorica } from '@/components/SimulacaoHistorica'
+import { PrintableVersion, jogosComScore } from '@/components/PrintableVersion'
+import { ComparacaoConcurso } from '@/components/ComparacaoConcurso'
 
 export default function Index() {
   const navigate = useNavigate()
@@ -59,11 +62,19 @@ export default function Index() {
 
   const [isLoading, setIsLoading] = useState(false)
   const [fiveGamesResult, setFiveGamesResult] = useState<FiveGamesResult | null>(null)
+  const [editableGames, setEditableGames] = useState<number[][] | null>(null)
   const [exported, setExported] = useState(false)
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
   const [meta, setMeta] = useState<OptimizationMeta>(DEFAULT_META)
 
   const count = selectedNumbers.length
+
+  // Resultado "ao vivo" — recalculado a cada edição manual (drag-and-drop).
+  // Quando não há edições, equivale ao resultado original otimizado.
+  const liveResult = useMemo<FiveGamesResult | null>(() => {
+    if (!editableGames || editableGames.length === 0) return fiveGamesResult
+    return recomputeFiveGamesResult(editableGames, selectedNumbers)
+  }, [editableGames, selectedNumbers, fiveGamesResult])
 
   // === Limites dinâmicos conforme o modo ativo ===
   const minRequired = isCincoJogos ? FIVE_GAMES_MIN_SELECTION : 6
@@ -114,6 +125,7 @@ export default function Index() {
     setTimeout(() => {
       const result = optimizeFiveGamesV2(selectedNumbers, meta)
       setFiveGamesResult(result)
+      setEditableGames(result.games.map((g) => [...g]))
       setIsLoading(false)
     }, 350)
   }
@@ -127,6 +139,7 @@ export default function Index() {
       setTimeout(() => {
         const result = optimizeFiveGamesV2(selectedNumbers, next)
         setFiveGamesResult(result)
+        setEditableGames(result.games.map((g) => [...g]))
         setIsLoading(false)
       }, 250)
     }
@@ -146,12 +159,15 @@ export default function Index() {
     }
     const chosen = all.slice(0, total).sort((a, b) => a - b)
     setSelectedNumbers(chosen)
-    if (isCincoJogos) setFiveGamesResult(null)
+    if (isCincoJogos) {
+      setFiveGamesResult(null)
+      setEditableGames(null)
+    }
   }
 
   const handleExportFiveGames = () => {
-    if (!fiveGamesResult) return
-    const content = buildFiveGamesExportText(fiveGamesResult, selectedNumbers)
+    if (!liveResult) return
+    const content = buildFiveGamesExportText(liveResult, selectedNumbers)
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
@@ -175,10 +191,99 @@ export default function Index() {
     setTimeout(() => setCopiedIndex(null), 1500)
   }
 
+  // === Drag-and-drop: move uma dezena de um bilhete para outro ===
+  const [dragInfo, setDragInfo] = useState<{
+    fromIdx: number
+    num: number
+  } | null>(null)
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null)
+  const [invalidDropIdx, setInvalidDropIdx] = useState<number | null>(null)
+
+  const handleDragStart = (fromIdx: number, num: number) => {
+    // Bloqueia saída se o bilhete de origem ficaria com menos de 5 dezenas
+    const jogoOrigem = editableGames?.[fromIdx] ?? []
+    if (jogoOrigem.length <= 5) {
+      setInvalidDropIdx(fromIdx)
+      setTimeout(() => setInvalidDropIdx(null), 600)
+      return
+    }
+    setDragInfo({ fromIdx, num })
+  }
+
+  const handleDragOver = (e: React.DragEvent, toIdx: number) => {
+    e.preventDefault()
+    if (dragInfo && dragInfo.fromIdx === toIdx) return
+    const jogoDestino = editableGames?.[toIdx] ?? []
+    // Só marca como drop válido se houver espaço (≤ 5)
+    if (jogoDestino.length < 5) {
+      setDragOverIdx(toIdx)
+    } else {
+      setInvalidDropIdx(toIdx)
+    }
+  }
+
+  const handleDragLeave = (toIdx: number) => {
+    setDragOverIdx((prev) => (prev === toIdx ? null : prev))
+    setInvalidDropIdx((prev) => (prev === toIdx ? null : prev))
+  }
+
+  const handleDrop = (e: React.DragEvent, toIdx: number) => {
+    e.preventDefault()
+    setDragOverIdx(null)
+    if (!dragInfo || !editableGames) {
+      setDragInfo(null)
+      return
+    }
+    const { fromIdx, num } = dragInfo
+
+    if (fromIdx === toIdx) {
+      setDragInfo(null)
+      return
+    }
+
+    const jogoDestino = editableGames[toIdx]
+    // Bloqueia se destino já tem 5 dezenas
+    if (jogoDestino.length >= 5) {
+      setInvalidDropIdx(toIdx)
+      setTimeout(() => setInvalidDropIdx(null), 600)
+      setDragInfo(null)
+      return
+    }
+    // Bloqueia se a dezena já existe no destino
+    if (jogoDestino.includes(num)) {
+      setInvalidDropIdx(toIdx)
+      setTimeout(() => setInvalidDropIdx(null), 600)
+      setDragInfo(null)
+      return
+    }
+
+    const next = editableGames.map((g) => [...g])
+    next[fromIdx] = next[fromIdx].filter((n) => n !== num).sort((a, b) => a - b)
+    next[toIdx] = [...next[toIdx], num].sort((a, b) => a - b)
+    setEditableGames(next)
+    setDragInfo(null)
+  }
+
+  const handleDragEnd = () => {
+    setDragInfo(null)
+    setDragOverIdx(null)
+  }
+
+  // Restaura os 5 jogos originais otimizados (antes das edições manuais)
+  const handleResetJogos = () => {
+    if (!fiveGamesResult) return
+    setEditableGames(fiveGamesResult.games.map((g) => [...g]))
+    setDragInfo(null)
+    setDragOverIdx(null)
+  }
+
   const handleModeChange = (next: AppMode) => {
     if (next === mode) return
     // Ao sair do modo 5 jogos, limpa o resultado para não exibir jogos defasados
-    if (mode === 'cinco-jogos') setFiveGamesResult(null)
+    if (mode === 'cinco-jogos') {
+      setFiveGamesResult(null)
+      setEditableGames(null)
+    }
     setMode(next)
   }
 
@@ -216,7 +321,10 @@ export default function Index() {
               type="button"
               onClick={() => {
                 clearNumbers()
-                if (isCincoJogos) setFiveGamesResult(null)
+                if (isCincoJogos) {
+                  setFiveGamesResult(null)
+                  setEditableGames(null)
+                }
               }}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1a1f2b] border border-[#262c34] text-xs text-zinc-400 hover:text-red-400 hover:border-red-900/50 transition-colors"
               title="Limpar seleção atual"
@@ -358,19 +466,35 @@ export default function Index() {
           </div>
 
           {/* Resultado do Modo 5 Jogos (aparece abaixo do grid) */}
-          {isCincoJogos && fiveGamesResult && (
+          {isCincoJogos && liveResult && (
             <FiveGamesResultSection
-              result={fiveGamesResult}
+              result={liveResult}
+              editableGames={editableGames ?? []}
               copiedIndex={copiedIndex}
               onCopy={copyGameToClipboard}
               onExport={handleExportFiveGames}
               exported={exported}
               meta={meta}
+              onDragStart={handleDragStart}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              onDragEnd={handleDragEnd}
+              onReset={handleResetJogos}
+              dragInfo={dragInfo}
+              dragOverIdx={dragOverIdx}
+              invalidDropIdx={invalidDropIdx}
             />
           )}
-          {isCincoJogos && fiveGamesResult && <ProbabilisticAnalysis result={fiveGamesResult} />}
-          {isCincoJogos && fiveGamesResult && (
-            <SimulacaoHistorica jogos={fiveGamesResult.games} conjunto />
+          {isCincoJogos && liveResult && <ProbabilisticAnalysis result={liveResult} />}
+          {isCincoJogos && liveResult && <SimulacaoHistorica jogos={liveResult.games} conjunto />}
+          {isCincoJogos && liveResult && (
+            <>
+              <ComparacaoConcurso jogos={liveResult.games} />
+              <div className="flex justify-center sm:justify-start">
+                <PrintableVersion jogos={jogosComScore(liveResult.games)} modo="Modo 5 Jogos" />
+              </div>
+            </>
           )}
         </section>
 
@@ -383,7 +507,7 @@ export default function Index() {
               isUnderLimit={isUnderLimit}
               isLoading={isLoading}
               onGenerate={handleGenerate}
-              result={fiveGamesResult}
+              result={liveResult}
               meta={meta}
               onMetaChange={handleMetaChange}
             />
@@ -892,19 +1016,47 @@ const OptimizationMetaControl: React.FC<{
 }
 
 /* ============================================================
- * Seção de resultado do Modo 5 Jogos (cards de bilhete)
+ * Seção de resultado do Modo 5 Jogos (cards de bilhete com
+ * chips arrastáveis — HTML5 Drag and Drop nativo)
  * ============================================================ */
 const FiveGamesResultSection: React.FC<{
   result: FiveGamesResult
+  editableGames: number[][]
   copiedIndex: number | null
   onCopy: (game: number[], index: number) => void
   onExport: () => void
   exported: boolean
   meta: OptimizationMeta
-}> = ({ result, copiedIndex, onCopy, onExport, exported, meta }) => {
+  onDragStart: (fromIdx: number, num: number) => void
+  onDragOver: (e: React.DragEvent, toIdx: number) => void
+  onDragLeave: (toIdx: number) => void
+  onDrop: (e: React.DragEvent, toIdx: number) => void
+  onDragEnd: () => void
+  onReset: () => void
+  dragInfo: { fromIdx: number; num: number } | null
+  dragOverIdx: number | null
+  invalidDropIdx: number | null
+}> = ({
+  result,
+  editableGames,
+  copiedIndex,
+  onCopy,
+  onExport,
+  exported,
+  meta,
+  onDragStart,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+  onDragEnd,
+  onReset,
+  dragInfo,
+  dragOverIdx,
+  invalidDropIdx,
+}) => {
   return (
     <div className="space-y-6 animate-fade-in-up">
-      {/* Header + Export */}
+      {/* Header + Export + Reset */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#262c34] pb-4">
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
@@ -918,19 +1070,30 @@ const FiveGamesResultSection: React.FC<{
               </span>
             </h2>
             <p className="text-xs text-zinc-400">
-              Distribuição estratégica para maximizar a cobertura
+              Arraste as dezenas entre os bilhetes para ajustar manualmente
             </p>
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={onExport}
-          className="emerald-gradient text-white font-bold px-5 py-2.5 rounded-xl flex items-center justify-center gap-2 emerald-glow hover:translate-y-[-2px] hover:shadow-[0_0_18px_rgba(16,185,129,0.5)] active:scale-[0.98] transition-all shadow-md text-sm"
-        >
-          {exported ? <Check className="w-4 h-4" /> : <Download className="w-4 h-4" />}
-          <span>{exported ? 'Exportado!' : 'Exportar (.txt)'}</span>
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={onReset}
+            className="px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 font-bold text-sm bg-[#1a1f2b] text-zinc-300 border border-[#262c34] hover:text-white hover:border-emerald-500/50 hover:bg-[#202735] active:scale-[0.98] transition-all"
+            title="Restaurar os 5 jogos originais otimizados"
+          >
+            <RotateCcw className="w-4 h-4 text-emerald-400" />
+            <span>Resetar Jogos</span>
+          </button>
+          <button
+            type="button"
+            onClick={onExport}
+            className="emerald-gradient text-white font-bold px-5 py-2.5 rounded-xl flex items-center justify-center gap-2 emerald-glow hover:translate-y-[-2px] hover:shadow-[0_0_18px_rgba(16,185,129,0.5)] active:scale-[0.98] transition-all shadow-md text-sm"
+          >
+            {exported ? <Check className="w-4 h-4" /> : <Download className="w-4 h-4" />}
+            <span>{exported ? 'Exportado!' : 'Exportar (.txt)'}</span>
+          </button>
+        </div>
       </div>
 
       {/* Estatísticas de cobertura + Score médio */}
@@ -992,20 +1155,35 @@ const FiveGamesResultSection: React.FC<{
         <AverageScoreCard scores={result.scores} highlight={meta === 'score'} />
       </div>
 
-      {/* Cards dos 5 jogos */}
+      {/* Cards dos 5 jogos — chips arrastáveis */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-        {result.games.map((game, idx) => {
+        {editableGames.map((game, idx) => {
           const isCopied = copiedIndex === idx
+          const isDragOver = dragOverIdx === idx
+          const isInvalid = invalidDropIdx === idx
+          const isFull = game.length >= 5
           return (
             <div
               key={idx}
-              className="surface-card rounded-xl p-4 border border-[#262c34] hover:border-emerald-500/50 hover:shadow-[0_4px_20px_rgba(16,185,129,0.15)] transition-all group relative"
+              onDragOver={(e) => onDragOver(e, idx)}
+              onDragLeave={() => onDragLeave(idx)}
+              onDrop={(e) => onDrop(e, idx)}
+              className={`surface-card rounded-xl p-4 border transition-all group relative ${
+                isInvalid
+                  ? 'border-red-500 animate-pulse'
+                  : isDragOver
+                    ? 'border-dashed border-emerald-400 bg-emerald-950/20'
+                    : 'border-[#262c34] hover:border-emerald-500/50 hover:shadow-[0_4px_20px_rgba(16,185,129,0.15)]'
+              }`}
             >
               {/* Cabeçalho do bilhete */}
               <div className="flex items-center justify-between mb-3">
                 <span className="text-[11px] font-bold text-zinc-400 flex items-center gap-1">
                   <Sparkles className="w-3 h-3 text-emerald-400" />
                   Jogo #{String(idx + 1).padStart(2, '0')}
+                  <span className="text-[10px] text-zinc-500 font-normal ml-1">
+                    ({game.length}/5)
+                  </span>
                 </span>
                 <button
                   type="button"
@@ -1021,17 +1199,39 @@ const FiveGamesResultSection: React.FC<{
                 </button>
               </div>
 
-              {/* 5 números em blocos estilo bilhete */}
-              <div className="grid grid-cols-5 gap-1.5">
-                {game.map((num) => (
-                  <div
-                    key={num}
-                    className="aspect-square rounded-lg bg-[#1a1f2b] border border-[#262c34] group-hover:border-emerald-500/30 flex items-center justify-center text-sm font-bold text-white font-mono shadow-inner group-hover:text-emerald-300 transition-colors"
-                  >
-                    {formatTwoDigits(num)}
-                  </div>
-                ))}
+              {/* Chips arrastáveis das dezenas */}
+              <div className="flex flex-wrap gap-1.5 min-h-[44px]">
+                {game.map((num) => {
+                  const isDragging = dragInfo?.fromIdx === idx && dragInfo?.num === num
+                  return (
+                    <div
+                      key={num}
+                      draggable
+                      onDragStart={() => onDragStart(idx, num)}
+                      onDragEnd={onDragEnd}
+                      title={`Arraste a dezena ${formatTwoDigits(num)} para outro bilhete`}
+                      className={`px-2.5 py-1.5 rounded-lg font-mono text-sm font-bold border select-none transition-all ${
+                        isDragging
+                          ? 'opacity-50 cursor-grabbing bg-emerald-950/60 border-emerald-500/40 text-emerald-300'
+                          : 'cursor-grab bg-[#1a1f2b] border-[#262c34] group-hover:border-emerald-500/30 text-white hover:bg-emerald-950/40 hover:border-emerald-500/40 active:cursor-grabbing'
+                      }`}
+                    >
+                      {formatTwoDigits(num)}
+                    </div>
+                  )
+                })}
+                {game.length === 0 && (
+                  <span className="text-[11px] text-zinc-600 italic">Bilhete vazio</span>
+                )}
               </div>
+
+              {/* Aviso de bilhete cheio */}
+              {isFull && (
+                <div className="mt-2 text-[10px] text-amber-400/70 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" />
+                  Bilhete cheio — não aceita novas dezenas
+                </div>
+              )}
 
               {/* String formatada */}
               <div className="mt-3 pt-2 border-t border-[#262c34]/60 text-[11px] text-zinc-400 font-mono text-center tracking-tight">
