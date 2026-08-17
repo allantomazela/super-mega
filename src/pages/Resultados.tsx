@@ -15,6 +15,8 @@ import {
   CheckCircle2,
   Copy,
   Sparkles,
+  ArrowUpDown,
+  BarChart3,
 } from 'lucide-react'
 import { useMega } from '@/lib/MegaContext'
 import {
@@ -48,6 +50,7 @@ export default function Resultados() {
   const [currentPage, setCurrentPage] = useState(1)
   const [showToast, setShowToast] = useState(false)
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
+  const [sortByScore, setSortByScore] = useState(false)
 
   // Redirect to / if no valid numbers selected
   useEffect(() => {
@@ -89,18 +92,45 @@ export default function Resultados() {
     }
   }, [selectedNumbers, filters])
 
-  // Pagination
-  const totalPages = Math.ceil(filteredCombinations.length / ITEMS_PER_PAGE)
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
-  const endIndex = Math.min(startIndex + ITEMS_PER_PAGE, filteredCombinations.length)
-  const currentGames = useMemo(() => {
-    return filteredCombinations.slice(startIndex, endIndex)
-  }, [filteredCombinations, startIndex, endIndex])
+  // Ordem de exibição (geração ou por score)
+  const orderedCombinations = useMemo(() => {
+    if (!sortByScore) return filteredCombinations
+    return [...filteredCombinations].sort((a, b) => calculateGameScore(b) - calculateGameScore(a))
+  }, [filteredCombinations, sortByScore])
 
-  // Reset page when filters or numbers change
+  // Score médio de todos os jogos filtrados
+  const averageScore = useMemo(() => {
+    if (filteredCombinations.length === 0) return 0
+    const sum = filteredCombinations.reduce((acc, g) => acc + calculateGameScore(g), 0)
+    return Math.round(sum / filteredCombinations.length)
+  }, [filteredCombinations])
+
+  // Meta de cor do score médio (container + texto + rótulo)
+  const scoreColorMeta = useMemo(() => {
+    const { textColor, label } = getScoreColor(averageScore)
+    const bgContainer =
+      averageScore >= 80
+        ? 'bg-emerald-950/40 border-emerald-500/30 text-emerald-400'
+        : averageScore >= 60
+          ? 'bg-amber-950/40 border-amber-500/30 text-amber-400'
+          : averageScore >= 40
+            ? 'bg-orange-950/40 border-orange-500/30 text-orange-400'
+            : 'bg-red-950/40 border-red-500/30 text-red-400'
+    return { textColor, label, bgContainer }
+  }, [averageScore])
+
+  // Pagination
+  const totalPages = Math.ceil(orderedCombinations.length / ITEMS_PER_PAGE)
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
+  const endIndex = Math.min(startIndex + ITEMS_PER_PAGE, orderedCombinations.length)
+  const currentGames = useMemo(() => {
+    return orderedCombinations.slice(startIndex, endIndex)
+  }, [orderedCombinations, startIndex, endIndex])
+
+  // Reset page when filters, numbers or sort change
   useEffect(() => {
     setCurrentPage(1)
-  }, [selectedNumbers, filters])
+  }, [selectedNumbers, filters, sortByScore])
 
   // Export games to .txt file
   const handleExportTxt = () => {
@@ -205,8 +235,8 @@ export default function Resultados() {
         </div>
       </section>
 
-      {/* Dashboard Metrics (4 Cards with staggered fade-in) */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Dashboard Metrics (5 Cards with staggered fade-in) */}
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {/* Card 1: Total Combinations */}
         <div
           className="surface-card rounded-2xl p-5 border border-[#262c34] relative overflow-hidden shadow-md animate-fade-in-up"
@@ -294,6 +324,33 @@ export default function Resultados() {
           </div>
           <div className="text-xs text-zinc-400 mt-1">Jogos válidos × R$ 5,00</div>
         </div>
+
+        {/* Card 5: Score Médio dos Jogos */}
+        <div
+          className="surface-card rounded-2xl p-5 border border-[#262c34] relative overflow-hidden shadow-md animate-fade-in-up"
+          style={{ animationDelay: '320ms' }}
+        >
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+              Score Médio dos Jogos
+            </span>
+            <div
+              className={`w-8 h-8 rounded-lg flex items-center justify-center border ${
+                scoreColorMeta.bgContainer
+              }`}
+            >
+              <BarChart3 className={`w-4 h-4 ${scoreColorMeta.textColor}`} />
+            </div>
+          </div>
+          <div
+            className={`text-2xl sm:text-3xl font-extrabold tracking-tight ${scoreColorMeta.textColor}`}
+          >
+            {averageScore}%
+          </div>
+          <div className={`text-xs mt-1 font-semibold ${scoreColorMeta.textColor}`}>
+            {scoreColorMeta.label}
+          </div>
+        </div>
       </section>
 
       {/* Action Header: Games Title + Export Button */}
@@ -315,16 +372,31 @@ export default function Resultados() {
           </div>
         </div>
 
-        {/* Export Button */}
+        {/* Export Button + Sort toggle */}
         {filteredCombinations.length > 0 && (
-          <button
-            type="button"
-            onClick={handleExportTxt}
-            className="emerald-gradient text-white font-bold px-5 py-2.5 rounded-xl flex items-center justify-center gap-2 emerald-glow hover:translate-y-[-2px] hover:shadow-[0_0_18px_rgba(16,185,129,0.5)] active:scale-[0.98] transition-all shadow-md text-sm"
-          >
-            <Download className="w-4 h-4" />
-            <span>Exportar Jogos (.txt)</span>
-          </button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setSortByScore((v) => !v)}
+              className={`px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 font-bold text-sm transition-all border ${
+                sortByScore
+                  ? 'emerald-gradient text-white border-emerald-300/40 emerald-glow'
+                  : 'bg-[#1a1f2b] text-zinc-300 border-[#262c34] hover:text-white hover:border-zinc-600'
+              }`}
+              title="Ordenar jogos pelo score probabilístico"
+            >
+              <ArrowUpDown className="w-4 h-4" />
+              <span>{sortByScore ? 'Ordenado por Score' : 'Ordenar por Score'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleExportTxt}
+              className="emerald-gradient text-white font-bold px-5 py-2.5 rounded-xl flex items-center justify-center gap-2 emerald-glow hover:translate-y-[-2px] hover:shadow-[0_0_18px_rgba(16,185,129,0.5)] active:scale-[0.98] transition-all shadow-md text-sm"
+            >
+              <Download className="w-4 h-4" />
+              <span>Exportar Jogos (.txt)</span>
+            </button>
+          </div>
         )}
       </section>
 

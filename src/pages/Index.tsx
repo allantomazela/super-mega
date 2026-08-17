@@ -19,15 +19,18 @@ import {
   Percent,
   Layers,
   AlertCircle,
+  BarChart3,
+  PieChart,
 } from 'lucide-react'
 import { useMega, AppMode } from '@/lib/MegaContext'
 import {
   formatTwoDigits,
   formatGameString,
-  optimizeFiveGames,
+  optimizeFiveGamesV2,
   buildFiveGamesExportText,
   calculateGameScore,
   getScoreColor,
+  probabilityAtLeastFourPlus,
   FIVE_GAMES_MIN_SELECTION,
   FIVE_GAMES_MAX_SELECTION,
   FiveGamesResult,
@@ -104,7 +107,7 @@ export default function Index() {
     setIsLoading(true)
     setExported(false)
     setTimeout(() => {
-      const result = optimizeFiveGames(selectedNumbers)
+      const result = optimizeFiveGamesV2(selectedNumbers)
       setFiveGamesResult(result)
       setIsLoading(false)
     }, 350)
@@ -345,6 +348,7 @@ export default function Index() {
               exported={exported}
             />
           )}
+          {isCincoJogos && fiveGamesResult && <ProbabilisticAnalysis result={fiveGamesResult} />}
         </section>
 
         {/* Right Column: Filters (Desdobramento) / Painel 5 Jogos */}
@@ -822,8 +826,8 @@ const FiveGamesResultSection: React.FC<{
         </button>
       </div>
 
-      {/* Estatísticas de cobertura */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      {/* Estatísticas de cobertura + Score médio */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="surface-card rounded-xl p-4 border border-[#262c34] flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-emerald-950/50 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
             <Percent className="w-4 h-4" />
@@ -872,6 +876,7 @@ const FiveGamesResultSection: React.FC<{
             </div>
           </div>
         </div>
+        <AverageScoreCard scores={result.scores} />
       </div>
 
       {/* Cards dos 5 jogos */}
@@ -977,4 +982,103 @@ const FiveGameScoreBar: React.FC<{ game: number[] }> = ({ game }) => {
       <div className={`text-[10px] font-bold ${textColor}`}>{label}</div>
     </div>
   )
+}
+
+/* ============================================================
+ * Card "Score Médio" — média dos 5 scores com cor correspondente
+ * ============================================================ */
+const AverageScoreCard: React.FC<{ scores: number[] }> = ({ scores }) => {
+  const avg =
+    scores.length > 0 ? Math.round(scores.reduce((acc, s) => acc + s, 0) / scores.length) : 0
+  const { textColor, label } = getScoreColor(avg)
+
+  return (
+    <div className="surface-card rounded-xl p-4 border border-[#262c34] flex items-center gap-3">
+      <div className="w-9 h-9 rounded-lg bg-emerald-950/50 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+        <BarChart3 className="w-4 h-4" />
+      </div>
+      <div>
+        <div className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">
+          Score Médio
+        </div>
+        <div className={`text-lg font-extrabold ${textColor}`}>
+          {avg}%<span className={`text-[10px] font-bold ml-1.5 ${textColor}`}>{label}</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ============================================================
+ * Análise Probabilística — seção abaixo dos 5 bilhetes
+ * ============================================================ */
+const ProbabilisticAnalysis: React.FC<{ result: FiveGamesResult }> = ({ result }) => {
+  const probAtLeast4 = probabilityAtLeastFourPlus(result.games)
+  const probPercent = (probAtLeast4 * 100).toFixed(4)
+  // Probabilidade de um único jogo de 6 dezenas (referência Mega-Sena)
+  const probSingleQuadra =
+    (binomialCoefficientLocal(6, 4) * binomialCoefficientLocal(54, 2)) /
+    binomialCoefficientLocal(60, 6)
+  const probSingleQuadraPercent = (probSingleQuadra * 100).toFixed(4)
+
+  return (
+    <div className="surface-card rounded-2xl p-5 sm:p-6 border border-emerald-500/20 shadow-lg space-y-4">
+      <div className="flex items-center gap-2.5 border-b border-[#262c34] pb-3">
+        <div className="w-8 h-8 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+          <PieChart className="w-4 h-4" />
+        </div>
+        <div>
+          <h3 className="text-base font-bold text-white tracking-tight">Análise Probabilística</h3>
+          <p className="text-xs text-zinc-400">
+            Cálculos rigorosos por distribuição hipergeométrica
+          </p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="p-4 rounded-xl bg-[#161a1f] border border-[#262c34]">
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1">
+            Probabilidade de ao menos 1 jogo acertar 4+ números
+          </div>
+          <div className="text-2xl font-extrabold text-emerald-400">{probPercent}%</div>
+          <p className="text-[11px] text-zinc-500 mt-1.5 leading-relaxed">
+            Considerando a união das dezenas dos 5 jogos. Estimativa via produto dos complementos (1
+            − Π(1 − pᵢ)) das probabilidades hipergeométricas de cada jogo.
+          </p>
+        </div>
+        <div className="p-4 rounded-xl bg-[#161a1f] border border-[#262c34]">
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1">
+            Referência: 1 bilhete simples de 6 dezenas (quadra)
+          </div>
+          <div className="text-2xl font-extrabold text-zinc-300">{probSingleQuadraPercent}%</div>
+          <p className="text-[11px] text-zinc-500 mt-1.5 leading-relaxed">
+            Probabilidade oficial de acertar a quadra com um único jogo de 6 dezenas: C(6,4)·C(54,2)
+            / C(60,6). Serve como base de comparação para o conjunto de 5 jogos.
+          </p>
+        </div>
+      </div>
+
+      <div className="text-[11px] text-zinc-400 leading-relaxed bg-[#12161b] border border-[#262c34] rounded-xl p-3.5">
+        <strong className="text-zinc-200">Como interpretar:</strong> a probabilidade de ao menos um
+        dos 5 jogos acertar 4 ou mais dezenas cresce em relação a um bilhete isolado porque há mais
+        dezenas em jogo. No entanto, lembre-se de que cada sorteio da Mega-Sena é um evento
+        independente e uniforme — nenhum método elimina a aleatoriedade. O score probabilístico mede
+        o quão alinhado cada jogo está com as distribuições teóricas esperadas (paridade
+        hipergeométrica, soma gaussiana, entropia de décadas, regularidade de gaps), e não a chance
+        real de premiação.
+      </div>
+    </div>
+  )
+}
+
+// Helper local para evitar import circular dentro do JSX
+function binomialCoefficientLocal(n: number, k: number): number {
+  if (k < 0 || k > n) return 0
+  if (k === 0 || k === n) return 1
+  const kk = Math.min(k, n - k)
+  let r = 1
+  for (let i = 1; i <= kk; i++) {
+    r = (r * (n - kk + i)) / i
+  }
+  return Math.round(r)
 }

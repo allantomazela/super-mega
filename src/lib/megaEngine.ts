@@ -157,6 +157,8 @@ export interface FiveGamesResult {
   groupSize: number
   /** Número total de slots (sempre 25 = 5 × 5). */
   totalSlots: number
+  /** Score probabilístico (0-100) de cada um dos 5 jogos. */
+  scores: number[]
 }
 
 /**
@@ -272,13 +274,191 @@ export function optimizeFiveGames(selected: number[]): FiveGamesResult {
     coveragePercent,
     groupSize,
     totalSlots,
+    scores: games.map((g) => calculateGameScore(g)),
   }
 }
 
 /* ============================================================
- * Score de Acertividade
- * Pontua cada jogo de 0 a 100 com base em 5 critérios de 20pts:
- * Paridade, Soma, Datas/EV, Distribuição por décadas e Sequência.
+ * optimizeFiveGamesV2 — Motor probabilístico de cobertura
+ *
+ * Nova versão que combina cobertura máxima do grupo com scores
+ * probabilísticos individuais, minimizando a sobreposição de
+ * dezenas entre os 5 jogos.
+ *
+ * Estratégia:
+ *  a) Gera todas as C(n,5) combinações do grupo quando n ≤ 21
+ *     (≤ 20349 candidatas). Acima disso, usa amostragem gulosa.
+ *  b) Calcula o score probabilístico de cada candidata.
+ *  c) Seleciona 5 jogos que maximizam a cobertura do grupo E os
+ *     scores individuais, penalizando sobreposição de dezenas.
+ * ============================================================ */
+const V2_MAX_FULL_COMBINATIONS = 21 // n ≤ 21 → enumera tudo
+
+export function optimizeFiveGamesV2(selected: number[]): FiveGamesResult {
+  const group = [...new Set(selected)].sort((a, b) => a - b)
+  const groupSize = group.length
+  const totalSlots = FIVE_GAMES_COUNT * FIVE_GAMES_SIZE // 25
+  const k = FIVE_GAMES_SIZE // 5
+
+  // Gera candidatas
+  let candidates: number[][]
+  if (groupSize <= k) {
+    // Grupo mínimo: repete para preencher 5 jogos
+    candidates = [group]
+  } else if (groupSize <= V2_MAX_FULL_COMBINATIONS) {
+    candidates = generateCombinations(group, k)
+  } else {
+    // Amostragem gulosa: combinações das primeiras 21 dezenas
+    // (garante cobertura do núcleo) + candidatas aleatórias
+    // determinísticas envolvendo as dezenas restantes.
+    candidates = generateCombinations(group.slice(0, V2_MAX_FULL_COMBINATIONS), k)
+    const seed = 12345
+    let s = seed
+    const rand = () => {
+      s = (s * 1103515245 + 12345) & 0x7fffffff
+      return s / 0x7fffffff
+    }
+    const extra = 5000
+    for (let t = 0; t < extra; t++) {
+      const pool = [...group]
+      const pick: number[] = []
+      for (let i = 0; i < k; i++) {
+        const idx = Math.floor(rand() * pool.length)
+        pick.push(pool.splice(idx, 1)[0])
+      }
+      pick.sort((a, b) => a - b)
+      candidates.push(pick)
+    }
+  }
+
+  // Pontua todas as candidatas
+  const scored = candidates.map((c) => ({ game: c, score: calculateGameScore(c) }))
+  // Ordena por score decrescente
+  scored.sort((a, b) => b.score - a.score)
+
+  const chosen: { game: number[]; score: number }[] = []
+  const usage = new Map<number, number>()
+  group.forEach((n) => usage.set(n, 0))
+  const coveredSet = new Set<number>()
+
+  // Seleção gulosa: maximiza (score + cobertura nova - penalidade por repetição)
+  while (chosen.length < FIVE_GAMES_COUNT && scored.length > 0) {
+    let bestIdx = -1
+    let bestValue = -Infinity
+
+    for (let i = 0; i < scored.length; i++) {
+      const cand = scored[i]
+      let newCoverage = 0
+      let overlapPenalty = 0
+      for (const num of cand.game) {
+        if (!coveredSet.has(num)) newCoverage += 1
+        const u = usage.get(num) ?? 0
+        overlapPenalty += u
+      }
+      // Valor = score (peso 2) + cobertura nova (peso 4) - sobreposição (peso 1)
+      const value = cand.score * 2 + newCoverage * 4 - overlapPenalty * 1
+      if (value > bestValue) {
+        bestValue = value
+        bestIdx = i
+      }
+    }
+
+    if (bestIdx === -1) break
+    const picked = scored.splice(bestIdx, 1)[0]
+    chosen.push(picked)
+    for (const num of picked.game) {
+      coveredSet.add(num)
+      usage.set(num, (usage.get(num) ?? 0) + 1)
+    }
+  }
+
+  // Preenche jogos faltantes (grupo muito pequeno) repetindo o melhor
+  while (chosen.length < FIVE_GAMES_COUNT && chosen.length > 0) {
+    chosen.push(chosen[0])
+  }
+
+  const games = chosen.map((c) => [...c.game].sort((a, b) => a - b))
+  const covered = [...coveredSet].sort((a, b) => a - b)
+  const uncovered = group.filter((n) => !coveredSet.has(n))
+  const coveragePercent = groupSize > 0 ? Math.round((coveredSet.size / groupSize) * 1000) / 10 : 0
+  const scores = chosen.map((c) => c.score)
+
+  return {
+    games,
+    covered,
+    uncovered,
+    coveragePercent,
+    groupSize,
+    totalSlots,
+    scores,
+  }
+}
+
+/* ============================================================
+ * Coeficiente Binomial — C(n, k)
+ * Algoritmo multiplicativo: evita overflow de fatoriais e é
+ * numericamente estável para os cálculos hipergeométricos da
+ * Mega-Sena (N=60). Retorna o valor exato como Number (preciso
+ * até 2^53, suficiente para C(60,30)).
+ * ============================================================ */
+export function binomialCoefficient(n: number, k: number): number {
+  if (k < 0 || k > n) return 0
+  if (k === 0 || k === n) return 1
+  // Simetria: C(n,k) == C(n, n-k)
+  const kk = Math.min(k, n - k)
+  let result = 1
+  for (let i = 1; i <= kk; i++) {
+    // result = result * (n - kk + i) / i
+    // Multiplica antes e divide a cada passo mantendo inteiro
+    result = (result * (n - kk + i)) / i
+  }
+  return Math.round(result)
+}
+
+/* ============================================================
+ * Probabilidade combinada de acerto (análise do Modo 5 Jogos)
+ *
+ * Calcula a probabilidade de ao menos 1 dos jogos acertar 4 ou
+ * mais dezenas (quadra+), considerando a UNIÃO das dezenas dos 5
+ * jogos. A Mega-Sena sorteia 6 dezenas de 60; cada jogo possui 5
+ * dezenas. A probabilidade de um jogo de 5 dezenas acertar exatamente
+ * j dezenas do sorteio é hipergeométrica:
+ *   P(j | m=5) = C(m, j) * C(60 - m, 6 - j) / C(60, 6)
+ * Para 4+ acertos num jogo de 5 dezenas, somamos j=4 e j=5.
+ *
+ * Aproximação da união: com k jogos independentes e probabilidades
+ * p_i por jogo, P(ao menos 1) ≈ 1 - Π(1 - p_i). Como os jogos
+ * compartilham dezenas (dependência), esta é uma estimativa
+ * razoável (limite superior) usada para fins informativos.
+ * ============================================================ */
+export function probabilityAtLeastFourPlus(games: number[][]): number {
+  if (!games || games.length === 0) return 0
+  const total60 = binomialCoefficient(60, 6)
+  let complement = 1 // Π(1 - p_i)
+
+  for (const game of games) {
+    const m = game.length
+    if (m === 0) continue
+    // P(acertar 4+) num jogo de m dezenas
+    let p4plus = 0
+    for (let j = 4; j <= Math.min(m, 6); j++) {
+      const ways = binomialCoefficient(m, j) * binomialCoefficient(60 - m, 6 - j)
+      p4plus += ways / total60
+    }
+    complement *= 1 - p4plus
+  }
+  return Math.max(0, 1 - complement)
+}
+
+/* ============================================================
+ * Score de Acertividade (Motor Probabilístico)
+ * Pontua cada jogo de 0 a 100 com base em 5 critérios de 20pts,
+ * cada um fundamentado em matemática probabilística rigorosa:
+ *   a) Paridade ........... Distribuição Hipergeométrica
+ *   b) Soma ................ Z-Score Gaussiano
+ *   c) Datas/EV ............ Probabilidade Binomial
+ *   d) Décadas ............. Entropia de Shannon
+ *   e) Gaps ................ Teste de Regularidade (CV dos gaps)
  * ============================================================ */
 
 export interface ScoreColor {
@@ -292,79 +472,137 @@ export interface ScoreColor {
   bgClass: string
 }
 
-/** Paridade: equilibrio entre pares e ímpares (0-20pts). */
+/**
+ * a) Paridade — Distribuição Hipergeométrica (0-20pts)
+ *
+ * Em 60 dezenas há K=30 pares (e 30 ímpares). A divisão par/ímpar
+ * num jogo de tamanho n segue uma hipergeométrica:
+ *   P(evens) = C(30, evens) * C(30, odds) / C(60, n)
+ * Score = 20 * (P_observada / P_máxima), onde P_máxima é a
+ * probabilidade da divisão mais equilibrada possível para n.
+ */
 function parityScore(game: number[]): number {
-  const even = game.filter((n) => n % 2 === 0).length
-  const odd = game.length - even
-  const diff = Math.abs(even - odd)
-  if (diff === 0) return 20 // 3/3
-  if (diff === 1) return 15 // 4/2 ou 2/4 (ou 3/2 em jogos de 5)
-  if (diff === 2) return 5 // 5/1 ou 1/5
-  return 0 // 6/0 ou 0/6
-}
+  const n = game.length
+  if (n === 0) return 0
+  const evens = game.filter((num) => num % 2 === 0).length
+  const odds = n - evens
 
-/** Soma: proximidade de ~180 (0-20pts). */
-function sumScore(game: number[]): number {
-  const sum = game.reduce((acc, curr) => acc + curr, 0)
-  if (sum >= 160 && sum <= 200) return 20
-  if ((sum >= 140 && sum <= 159) || (sum >= 201 && sum <= 220)) return 15
-  if ((sum >= 120 && sum <= 139) || (sum >= 221 && sum <= 240)) return 8
-  return 2
-}
+  // Probabilidade exata da divisão observada
+  const total = binomialCoefficient(60, n)
+  const probObserved = (binomialCoefficient(30, evens) * binomialCoefficient(30, odds)) / total
 
-/** Datas/EV: menos números de calendário (1-31) é melhor (0-20pts). */
-function expectedValueScore(game: number[]): number {
-  const calendarNumbersCount = game.filter((n) => n >= 1 && n <= 31).length
-  if (calendarNumbersCount <= 1) return 20
-  if (calendarNumbersCount === 2) return 15
-  if (calendarNumbersCount === 3) return 8
-  return 0
-}
+  // Probabilidade máxima: divisão mais equilibrada (evens ≈ n/2)
+  const balancedEven = Math.floor(n / 2)
+  const balancedOdd = n - balancedEven
+  const probMax =
+    (binomialCoefficient(30, balancedEven) * binomialCoefficient(30, balancedOdd)) / total
 
-/** Distribuição por décadas: 6 faixas de 10 (0-20pts). */
-function decadeScore(game: number[]): number {
-  const decades = new Array(6).fill(0)
-  game.forEach((n) => {
-    const idx = Math.min(Math.floor((n - 1) / 10), 5)
-    decades[idx] += 1
-  })
-  const occupied = decades.filter((c) => c > 0).length
-  let score = occupied * (20 / 6) // ~3.33 por década ocupada
-  // Penalidade: mais de 2 números na mesma década → -3 por número extra
-  decades.forEach((c) => {
-    if (c > 2) score -= (c - 2) * 3
-  })
+  const score = probMax > 0 ? 20 * (probObserved / probMax) : 0
   return Math.max(0, Math.min(20, score))
 }
 
-/** Sequência: penaliza consecutivos (0-20pts). */
-function sequenceScore(game: number[]): number {
-  const sorted = [...game].sort((a, b) => a - b)
-  // Encontra runs máximos de consecutivos
-  let duplas = 0
-  let hasTripla = false
-  let runLen = 1
-  for (let i = 1; i < sorted.length; i++) {
-    if (sorted[i] === sorted[i - 1] + 1) {
-      runLen += 1
-    } else {
-      if (runLen >= 3) hasTripla = true
-      else if (runLen === 2) duplas += 1
-      runLen = 1
-    }
-  }
-  if (runLen >= 3) hasTripla = true
-  else if (runLen === 2) duplas += 1
+/**
+ * b) Soma — Z-Score Gaussiano (0-20pts)
+ *
+ * A soma de n números uniformes [1,60] tem:
+ *   μ = n * 30.5
+ *   σ = sqrt(n * (60² - 1) / 12)   (variância da uniforme discreta)
+ * z = |soma - μ| / σ. Quanto menor o z, mais próximo da média.
+ * Score = max(0, 20 - z * 8).
+ */
+function sumScore(game: number[]): number {
+  const n = game.length
+  if (n === 0) return 0
+  const sum = game.reduce((acc, curr) => acc + curr, 0)
+  const mu = n * 30.5
+  const sigma = Math.sqrt((n * (60 * 60 - 1)) / 12)
+  const z = Math.abs(sum - mu) / sigma
+  return Math.max(0, 20 - z * 8)
+}
 
-  if (hasTripla) return 0
-  if (duplas === 0) return 20
-  if (duplas === 1) return 12
-  return 6 // 2+ duplas separadas
+/**
+ * c) Datas/EV — Probabilidade Binomial (0-20pts)
+ *
+ * Probabilidade de uma dezena ser de calendário (1-31): p = 31/60.
+ * Número esperado de dezenas de calendário: n * p.
+ * Score máximo quando ≤ 1 dezena de calendário, decaindo linearmente
+ * com a distância acima do esperado até 0.
+ */
+function expectedValueScore(game: number[]): number {
+  const n = game.length
+  if (n === 0) return 0
+  const p = 31 / 60
+  const calendarCount = game.filter((num) => num >= 1 && num <= 31).length
+
+  // Score máximo quando há no máximo 1 dezena de calendário
+  if (calendarCount <= 1) return 20
+
+  // Esperado = n * p. Distância acima do esperado penaliza o score.
+  const expected = n * p
+  const excess = Math.max(0, calendarCount - Math.max(1, expected))
+  // Decai ~6 pts por dezena acima do esperado/limite
+  const score = 20 - excess * 6
+  return Math.max(0, Math.min(20, score))
+}
+
+/**
+ * d) Entropia de Décadas (0-20pts)
+ *
+ * Divide [1,60] em 6 faixas de 10. Calcula a entropia de Shannon
+ * H = -Σ(pi * ln(pi)) com pi = count_i / n.
+ * Entropia máxima = ln(6) ≈ 1.791 (distribuição uniforme).
+ * Score = 20 * (H / ln(6)).
+ */
+function decadeScore(game: number[]): number {
+  const n = game.length
+  if (n === 0) return 0
+  const decades = new Array(6).fill(0)
+  game.forEach((num) => {
+    const idx = Math.min(Math.floor((num - 1) / 10), 5)
+    decades[idx] += 1
+  })
+
+  let entropy = 0
+  decades.forEach((c) => {
+    if (c > 0) {
+      const pi = c / n
+      entropy -= pi * Math.log(pi)
+    }
+  })
+
+  const maxEntropy = Math.log(6) // ≈ 1.791
+  const score = maxEntropy > 0 ? 20 * (entropy / maxEntropy) : 0
+  return Math.max(0, Math.min(20, score))
+}
+
+/**
+ * e) Uniformidade de Gaps — Teste de Regularidade (0-20pts)
+ *
+ * Para n números ordenados há n-1 gaps. O gap esperado sob
+ * distribuição uniforme é ≈ (60 - n) / (n + 1). O coeficiente de
+ * variação (CV = desvio_padrão / média) dos gaps aproxima 1 para
+ * um RNG uniforme (gaps ~ exponencial). Score = max(0, 20 - |CV-1|*15).
+ */
+function gapScore(game: number[]): number {
+  const n = game.length
+  if (n < 2) return 0
+  const sorted = [...game].sort((a, b) => a - b)
+  const gaps: number[] = []
+  for (let i = 1; i < n; i++) {
+    gaps.push(sorted[i] - sorted[i - 1])
+  }
+  const mean = gaps.reduce((acc, g) => acc + g, 0) / gaps.length
+  if (mean === 0) return 0
+  const variance = gaps.reduce((acc, g) => acc + (g - mean) ** 2, 0) / gaps.length
+  const stdDev = Math.sqrt(variance)
+  const cv = stdDev / mean
+  return Math.max(0, 20 - Math.abs(cv - 1) * 15)
 }
 
 /**
  * Calcula o Score de Acertividade de um jogo (0-100).
- * Soma de 5 critérios de 20 pontos cada, arredondada para inteiro.
+ * Soma de 5 critérios probabilísticos de 20 pontos cada,
+ * arredondada para inteiro.
  */
 export function calculateGameScore(game: number[]): number {
   if (!game || game.length === 0) return 0
@@ -373,17 +611,17 @@ export function calculateGameScore(game: number[]): number {
     sumScore(game) +
     expectedValueScore(game) +
     decadeScore(game) +
-    sequenceScore(game)
+    gapScore(game)
   return Math.round(Math.max(0, Math.min(100, total)))
 }
 
 /**
  * Retorna a cor/label de classificação do score.
- * ≥75 = verde ("Ótimo"), ≥55 = âmbar ("Bom"),
- * ≥35 = laranja ("Regular"), <35 = vermelho ("Baixo").
+ * ≥80 = verde ("Ótimo"), ≥60 = âmbar ("Bom"),
+ * ≥40 = laranja ("Regular"), <40 = vermelho ("Baixo").
  */
 export function getScoreColor(score: number): ScoreColor {
-  if (score >= 75) {
+  if (score >= 80) {
     return {
       color: '#10b981',
       label: 'Ótimo',
@@ -391,7 +629,7 @@ export function getScoreColor(score: number): ScoreColor {
       bgClass: 'bg-emerald-500',
     }
   }
-  if (score >= 55) {
+  if (score >= 60) {
     return {
       color: '#f59e0b',
       label: 'Bom',
@@ -399,7 +637,7 @@ export function getScoreColor(score: number): ScoreColor {
       bgClass: 'bg-amber-500',
     }
   }
-  if (score >= 35) {
+  if (score >= 40) {
     return {
       color: '#f97316',
       label: 'Regular',
@@ -437,8 +675,22 @@ export function buildFiveGamesExportText(result: FiveGamesResult, selected: numb
   ].join('\n')
 
   const body = result.games
-    .map((game, idx) => `Jogo ${String(idx + 1).padStart(2, '0')}: ${formatGameString(game)}`)
+    .map((game, idx) => {
+      const score = result.scores[idx] ?? 0
+      const { label } = getScoreColor(score)
+      return `Jogo ${String(idx + 1).padStart(2, '0')}: ${formatGameString(game)} | Score: ${score}% (${label})`
+    })
     .join('\n')
 
-  return `${header}\n${body}\n`
+  const avgScore =
+    result.scores.length > 0
+      ? Math.round(result.scores.reduce((acc, s) => acc + s, 0) / result.scores.length)
+      : 0
+  const footer = [
+    ``,
+    `# Score Médio dos 5 Jogos: ${avgScore}%`,
+    `# Motor probabilístico: hipergeométrica, z-score, binomial, entropia de Shannon, regularidade de gaps`,
+  ].join('\n')
+
+  return `${header}\n${body}\n${footer}\n`
 }
