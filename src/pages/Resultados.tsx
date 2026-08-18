@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react'
+import React, { useMemo, useState, useEffect, useCallback } from 'react'
 import { useLocation, useNavigate, Link } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -41,7 +41,10 @@ import {
 import { ScoreHistogram } from '@/components/ScoreHistogram'
 import { SimulacaoHistorica } from '@/components/SimulacaoHistorica'
 import { PrintableVersion, jogosComScore } from '@/components/PrintableVersion'
-import { ComparacaoConcurso } from '@/components/ComparacaoConcurso'
+import { ComparacaoConcurso, ConferenciaCallbackPayload } from '@/components/ComparacaoConcurso'
+import { GameScoreRadar } from '@/components/RadarChart'
+import { HistoricoConferencias } from '@/components/HistoricoConferencias'
+import { useHistoricoConferencias } from '@/hooks/useHistoricoConferencias'
 
 const ITEMS_PER_PAGE = 24
 
@@ -64,6 +67,20 @@ export default function Resultados() {
   const [sortByScore, setSortByScore] = useState(false)
   // Filtro por score mínimo (slider 0-100, step 5). 0 = mostra todos.
   const [minScore, setMinScore] = useState(0)
+
+  // === Histórico de Conferências (localStorage) ===
+  const { historico, adicionar, limpar } = useHistoricoConferencias()
+
+  const handleConferir = useCallback(
+    (payload: ConferenciaCallbackPayload) => {
+      adicionar({
+        modo: 'desdobramento',
+        dezenasSorteadas: payload.dezenasSorteadas,
+        jogos: payload.jogos,
+      })
+    },
+    [adicionar],
+  )
 
   // Redirect to / if no valid numbers selected
   useEffect(() => {
@@ -480,8 +497,11 @@ export default function Resultados() {
 
       {/* Comparação com concurso específico */}
       {scoreFilteredCombinations.length > 0 && (
-        <ComparacaoConcurso jogos={scoreFilteredCombinations} />
+        <ComparacaoConcurso jogos={scoreFilteredCombinations} onConferir={handleConferir} />
       )}
+
+      {/* Histórico de Conferências (localStorage) */}
+      <HistoricoConferencias historico={historico} onLimpar={limpar} />
 
       {/* Banner de jogos com Score Elite (≥ 90%) */}
       {eliteCount > 0 && (
@@ -785,6 +805,7 @@ const GameScoreBar: React.FC<{ game: number[] }> = ({ game }) => {
           </span>
         )}
       </div>
+      <GameScoreRadar game={game} />
     </div>
   )
 }

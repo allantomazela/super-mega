@@ -22,6 +22,13 @@ import { formatTwoDigits, formatGameString } from '@/lib/megaEngine'
  * quantos jogos alcançaram 4, 5 e 6 acertos.
  * ============================================================ */
 
+export interface ConferenciaCallbackPayload {
+  /** Dezenas sorteadas usadas na conferência. */
+  dezenasSorteadas: number[]
+  /** Jogos conferidos com acertos. */
+  jogos: { jogo: number[]; acertos: number; acertadas: number[] }[]
+}
+
 interface ComparacaoConcursoProps {
   /** Jogos a comparar contra as dezenas do concurso. */
   jogos: number[][]
@@ -33,6 +40,8 @@ interface ComparacaoConcursoProps {
   botaoLabel?: string
   /** Mostra a aba de busca por número de concurso. Padrão: true. */
   permitirBuscaConcurso?: boolean
+  /** Callback disparado ao realizar a conferência (para histórico). */
+  onConferir?: (payload: ConferenciaCallbackPayload) => void
 }
 
 type ModoInput = 'numero' | 'dezenas'
@@ -52,6 +61,7 @@ export const ComparacaoConcurso: React.FC<ComparacaoConcursoProps> = ({
   subtitulo,
   botaoLabel = 'Comparar Jogos',
   permitirBuscaConcurso = true,
+  onConferir,
 }) => {
   const modoInicial: ModoInput = permitirBuscaConcurso ? 'numero' : 'dezenas'
   const [modo, setModo] = useState<ModoInput>(modoInicial)
@@ -166,6 +176,17 @@ export const ComparacaoConcurso: React.FC<ComparacaoConcursoProps> = ({
       return { index, jogo, acertos: acertadas.length, acertadas }
     })
     setResultado(res)
+    // Dispara callback para histórico de conferências
+    if (onConferir) {
+      onConferir({
+        dezenasSorteadas: [...alvo],
+        jogos: res.map((r) => ({
+          jogo: r.jogo,
+          acertos: r.acertos,
+          acertadas: r.acertadas,
+        })),
+      })
+    }
   }
 
   const podeComparar =

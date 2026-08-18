@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react'
+import React, { useState, useMemo, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Filter,
@@ -25,6 +25,7 @@ import {
   Star,
   TrendingUp,
   Gauge,
+  Swords,
 } from 'lucide-react'
 import { useMega, AppMode } from '@/lib/MegaContext'
 import {
@@ -60,7 +61,11 @@ import {
 import { ToggleSwitch } from '@/components/ToggleSwitch'
 import { SimulacaoHistorica } from '@/components/SimulacaoHistorica'
 import { PrintableVersion, jogosComScore } from '@/components/PrintableVersion'
-import { ComparacaoConcurso } from '@/components/ComparacaoConcurso'
+import { ComparacaoConcurso, ConferenciaCallbackPayload } from '@/components/ComparacaoConcurso'
+import { GameScoreRadar } from '@/components/RadarChart'
+import { HistoricoConferencias } from '@/components/HistoricoConferencias'
+import { useHistoricoConferencias } from '@/hooks/useHistoricoConferencias'
+import { TorneioMode } from '@/components/TorneioMode'
 import { CONCURSOS_HISTORICOS } from '@/data/concursosHistoricos'
 import { useToast } from '@/hooks/use-toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -81,6 +86,20 @@ export default function Index() {
   const { toast } = useToast()
 
   const isCincoJogos = mode === 'cinco-jogos'
+  const isTorneio = mode === 'torneio'
+
+  // === Histórico de Conferências (localStorage) ===
+  const { historico, adicionar, limpar } = useHistoricoConferencias()
+  const handleConferirCincoJogos = useCallback(
+    (payload: ConferenciaCallbackPayload) => {
+      adicionar({
+        modo: 'cinco-jogos',
+        dezenasSorteadas: payload.dezenasSorteadas,
+        jogos: payload.jogos,
+      })
+    },
+    [adicionar],
+  )
 
   const [isLoading, setIsLoading] = useState(false)
   const [fiveGamesResult, setFiveGamesResult] = useState<FiveGamesResult | null>(null)
@@ -341,70 +360,77 @@ export default function Index() {
       {/* Mode Toggle (pills) */}
       <ModeToggle mode={mode} onChange={handleModeChange} />
 
-      {/* Title & Instructions */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#262c34] pb-6">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-            {isCincoJogos ? 'Otimizador de 5 Jogos' : 'Monte seu Grupo de Dezenas'}
-          </h1>
-          <p className="text-sm sm:text-base text-zinc-400 mt-1">
-            {isCincoJogos
-              ? `Selecione de ${FIVE_GAMES_MIN_SELECTION} a ${FIVE_GAMES_MAX_SELECTION} dezenas e gere 5 jogos otimizados de 5 dezenas.`
-              : 'Selecione entre 6 e 15 dezenas e aplique os filtros para otimizar seu jogo.'}
-          </p>
-        </div>
+      {/* Modo Torneio — renderização própria, independente do grid */}
+      {isTorneio ? (
+        <TorneioMode />
+      ) : (
+        <>
+          {/* Title & Instructions */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#262c34] pb-6">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+                {isCincoJogos ? 'Otimizador de 5 Jogos' : 'Monte seu Grupo de Dezenas'}
+              </h1>
+              <p className="text-sm sm:text-base text-zinc-400 mt-1">
+                {isCincoJogos
+                  ? `Selecione de ${FIVE_GAMES_MIN_SELECTION} a ${FIVE_GAMES_MAX_SELECTION} dezenas e gere 5 jogos otimizados de 5 dezenas.`
+                  : 'Selecione entre 6 e 15 dezenas e aplique os filtros para otimizar seu jogo.'}
+              </p>
+            </div>
 
-        {/* Quick actions: Surpresinha + Resetar Tudo */}
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => handleRandomSelect(isCincoJogos ? 12 : 10)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1a1f2b] border border-[#262c34] text-xs text-zinc-300 hover:text-white hover:border-zinc-600 transition-colors"
-            title={isCincoJogos ? 'Sortear 12 dezenas aleatórias' : 'Sortear 10 dezenas aleatórias'}
-          >
-            <Dices className="w-3.5 h-3.5 text-emerald-400" />
-            <span>{isCincoJogos ? 'Gerar 12 aleatórias' : 'Gerar 10 aleatórias'}</span>
-          </button>
-          <button
-            type="button"
-            onClick={handleResetAll}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-950/40 border border-red-500/40 text-xs font-semibold text-red-300 hover:text-white hover:bg-red-900/50 hover:border-red-400 transition-colors"
-            title="Limpar tudo: dezenas, filtros, jogos e meta — recomeçar do zero"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span>Resetar Tudo</span>
-          </button>
-        </div>
-      </div>
+            {/* Quick actions: Surpresinha + Resetar Tudo */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => handleRandomSelect(isCincoJogos ? 12 : 10)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1a1f2b] border border-[#262c34] text-xs text-zinc-300 hover:text-white hover:border-zinc-600 transition-colors"
+                title={
+                  isCincoJogos ? 'Sortear 12 dezenas aleatórias' : 'Sortear 10 dezenas aleatórias'
+                }
+              >
+                <Dices className="w-3.5 h-3.5 text-emerald-400" />
+                <span>{isCincoJogos ? 'Gerar 12 aleatórias' : 'Gerar 10 aleatórias'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleResetAll}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-950/40 border border-red-500/40 text-xs font-semibold text-red-300 hover:text-white hover:bg-red-900/50 hover:border-red-400 transition-colors"
+                title="Limpar tudo: dezenas, filtros, jogos e meta — recomeçar do zero"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Resetar Tudo</span>
+              </button>
+            </div>
+          </div>
 
-      {/* Main Grid: Left = 1-60 Grid, Right = Filters / 5 Jogos panel */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Left Column: Number Grid & Counter */}
-        <section className="lg:col-span-7 xl:col-span-8 space-y-6">
-          <div className="surface-card rounded-2xl p-5 sm:p-6 shadow-xl relative overflow-hidden">
-            {/* Ambient emerald gradient top */}
-            <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent" />
+          {/* Main Grid: Left = 1-60 Grid, Right = Filters / 5 Jogos panel */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            {/* Left Column: Number Grid & Counter */}
+            <section className="lg:col-span-7 xl:col-span-8 space-y-6">
+              <div className="surface-card rounded-2xl p-5 sm:p-6 shadow-xl relative overflow-hidden">
+                {/* Ambient emerald gradient top */}
+                <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent" />
 
-            {/* Grid 01-60 */}
-            <div className="grid grid-cols-6 sm:grid-cols-8 lg:grid-cols-12 gap-2 sm:gap-2.5">
-              {Array.from({ length: 60 }, (_, i) => i + 1).map((num) => {
-                const isSelected = selectedNumbers.includes(num)
-                const isMaxReached = !isSelected && count >= maxSelection
+                {/* Grid 01-60 */}
+                <div className="grid grid-cols-6 sm:grid-cols-8 lg:grid-cols-12 gap-2 sm:gap-2.5">
+                  {Array.from({ length: 60 }, (_, i) => i + 1).map((num) => {
+                    const isSelected = selectedNumbers.includes(num)
+                    const isMaxReached = !isSelected && count >= maxSelection
 
-                return (
-                  <button
-                    key={num}
-                    type="button"
-                    onClick={() => toggleNumber(num)}
-                    disabled={isMaxReached}
-                    title={
-                      isMaxReached
-                        ? `Limite de ${maxSelection} dezenas atingido`
-                        : isSelected
-                          ? `Remover dezena ${formatTwoDigits(num)}`
-                          : `Selecionar dezena ${formatTwoDigits(num)}`
-                    }
-                    className={`
+                    return (
+                      <button
+                        key={num}
+                        type="button"
+                        onClick={() => toggleNumber(num)}
+                        disabled={isMaxReached}
+                        title={
+                          isMaxReached
+                            ? `Limite de ${maxSelection} dezenas atingido`
+                            : isSelected
+                              ? `Remover dezena ${formatTwoDigits(num)}`
+                              : `Selecionar dezena ${formatTwoDigits(num)}`
+                        }
+                        className={`
                       relative aspect-square w-full min-h-[44px] sm:min-h-[48px] rounded-xl font-bold text-sm sm:text-base flex items-center justify-center transition-all duration-150 select-none
                       ${
                         isSelected
@@ -417,159 +443,169 @@ export default function Index() {
                           : 'cursor-pointer'
                       }
                     `}
-                  >
-                    {formatTwoDigits(num)}
-                  </button>
-                )
-              })}
-            </div>
-
-            {/* Counter Section Below Grid */}
-            <div className="mt-6 pt-5 border-t border-[#262c34] flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                {/* Circular Progress Arc */}
-                <div className="relative w-12 h-12 flex items-center justify-center flex-shrink-0">
-                  <svg height={radius * 2} width={radius * 2} className="transform -rotate-90">
-                    <circle
-                      stroke="#262c34"
-                      fill="transparent"
-                      strokeWidth={stroke}
-                      r={normalizedRadius}
-                      cx={radius}
-                      cy={radius}
-                    />
-                    <circle
-                      stroke={strokeColor}
-                      fill="transparent"
-                      strokeWidth={stroke}
-                      strokeDasharray={`${circumference} ${circumference}`}
-                      style={{ strokeDashoffset }}
-                      strokeLinecap="round"
-                      r={normalizedRadius}
-                      cx={radius}
-                      cy={radius}
-                      className="transition-all duration-300 ease-out"
-                    />
-                  </svg>
-                  <span className="absolute text-xs font-bold text-white">{count}</span>
-                </div>
-
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-white font-semibold text-sm sm:text-base">
-                      Dezenas Selecionadas:{' '}
-                      <span
-                        className={
-                          isValidCount
-                            ? 'text-emerald-400 font-bold'
-                            : isOverLimit
-                              ? 'text-red-400 font-bold'
-                              : 'text-zinc-400'
-                        }
                       >
-                        {count}
-                      </span>
-                    </span>
-                    <span
-                      className={`text-[11px] px-2 py-0.5 rounded-full border ${badgeColorClass}`}
-                    >
-                      {count < minRequired
-                        ? `Faltam ${minRequired - count}`
-                        : count <= maxSelection
-                          ? `${maxSelection - count} restantes`
-                          : 'Excedeu limite'}
-                    </span>
+                        {formatTwoDigits(num)}
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {/* Counter Section Below Grid */}
+                <div className="mt-6 pt-5 border-t border-[#262c34] flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    {/* Circular Progress Arc */}
+                    <div className="relative w-12 h-12 flex items-center justify-center flex-shrink-0">
+                      <svg height={radius * 2} width={radius * 2} className="transform -rotate-90">
+                        <circle
+                          stroke="#262c34"
+                          fill="transparent"
+                          strokeWidth={stroke}
+                          r={normalizedRadius}
+                          cx={radius}
+                          cy={radius}
+                        />
+                        <circle
+                          stroke={strokeColor}
+                          fill="transparent"
+                          strokeWidth={stroke}
+                          strokeDasharray={`${circumference} ${circumference}`}
+                          style={{ strokeDashoffset }}
+                          strokeLinecap="round"
+                          r={normalizedRadius}
+                          cx={radius}
+                          cy={radius}
+                          className="transition-all duration-300 ease-out"
+                        />
+                      </svg>
+                      <span className="absolute text-xs font-bold text-white">{count}</span>
+                    </div>
+
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-white font-semibold text-sm sm:text-base">
+                          Dezenas Selecionadas:{' '}
+                          <span
+                            className={
+                              isValidCount
+                                ? 'text-emerald-400 font-bold'
+                                : isOverLimit
+                                  ? 'text-red-400 font-bold'
+                                  : 'text-zinc-400'
+                            }
+                          >
+                            {count}
+                          </span>
+                        </span>
+                        <span
+                          className={`text-[11px] px-2 py-0.5 rounded-full border ${badgeColorClass}`}
+                        >
+                          {count < minRequired
+                            ? `Faltam ${minRequired - count}`
+                            : count <= maxSelection
+                              ? `${maxSelection - count} restantes`
+                              : 'Excedeu limite'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-zinc-400 mt-0.5">
+                        {isCincoJogos
+                          ? `Mínimo ${FIVE_GAMES_MIN_SELECTION} e máximo ${FIVE_GAMES_MAX_SELECTION} dezenas para otimização de cobertura.`
+                          : 'Mínimo 6 e máximo 15 dezenas (padrão oficial de desdobramento).'}
+                      </p>
+                    </div>
                   </div>
-                  <p className="text-xs text-zinc-400 mt-0.5">
-                    {isCincoJogos
-                      ? `Mínimo ${FIVE_GAMES_MIN_SELECTION} e máximo ${FIVE_GAMES_MAX_SELECTION} dezenas para otimização de cobertura.`
-                      : 'Mínimo 6 e máximo 15 dezenas (padrão oficial de desdobramento).'}
-                  </p>
+
+                  {/* Selected numbers chips preview if any */}
+                  {count > 0 && (
+                    <div className="flex flex-wrap items-center justify-end gap-1 max-w-[280px]">
+                      {selectedNumbers.map((n) => (
+                        <span
+                          key={n}
+                          onClick={() => toggleNumber(n)}
+                          title="Clique para remover"
+                          className="cursor-pointer text-[11px] font-bold px-1.5 py-0.5 rounded bg-emerald-950/60 border border-emerald-500/30 text-emerald-300 hover:bg-red-950/60 hover:border-red-500/40 hover:text-red-300 transition-colors"
+                        >
+                          {formatTwoDigits(n)}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* Selected numbers chips preview if any */}
-              {count > 0 && (
-                <div className="flex flex-wrap items-center justify-end gap-1 max-w-[280px]">
-                  {selectedNumbers.map((n) => (
-                    <span
-                      key={n}
-                      onClick={() => toggleNumber(n)}
-                      title="Clique para remover"
-                      className="cursor-pointer text-[11px] font-bold px-1.5 py-0.5 rounded bg-emerald-950/60 border border-emerald-500/30 text-emerald-300 hover:bg-red-950/60 hover:border-red-500/40 hover:text-red-300 transition-colors"
-                    >
-                      {formatTwoDigits(n)}
-                    </span>
-                  ))}
-                </div>
+              {/* Resultado do Modo 5 Jogos (aparece abaixo do grid) */}
+              {isCincoJogos && liveResult && (
+                <FiveGamesResultSection
+                  result={liveResult}
+                  editableGames={editableGames ?? []}
+                  copiedIndex={copiedIndex}
+                  onCopy={copyGameToClipboard}
+                  onExport={handleExportFiveGames}
+                  exported={exported}
+                  meta={meta}
+                  onDragStart={handleDragStart}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  onDragEnd={handleDragEnd}
+                  onReset={handleResetJogos}
+                  dragInfo={dragInfo}
+                  dragOverIdx={dragOverIdx}
+                  invalidDropIdx={invalidDropIdx}
+                />
               )}
-            </div>
+              {isCincoJogos && liveResult && <ProbabilisticAnalysis result={liveResult} />}
+              {isCincoJogos && liveResult && (
+                <SimulacaoHistorica jogos={liveResult.games} conjunto />
+              )}
+              {isCincoJogos && liveResult && (
+                <>
+                  <ComparacaoConcurso
+                    jogos={liveResult.games}
+                    titulo="Conferir com Sorteio"
+                    subtitulo="Digite as 6 dezenas sorteadas para ver quantos acertos cada jogo teria"
+                    botaoLabel="Conferir"
+                    permitirBuscaConcurso={false}
+                    onConferir={handleConferirCincoJogos}
+                  />
+                  <div className="flex justify-center sm:justify-start">
+                    <PrintableVersion jogos={jogosComScore(liveResult.games)} modo="Modo 5 Jogos" />
+                  </div>
+                </>
+              )}
+            </section>
+
+            {/* Right Column: Filters (Desdobramento) / Painel 5 Jogos */}
+            <section className="lg:col-span-5 xl:col-span-4 space-y-6">
+              {isCincoJogos ? (
+                <FiveGamesPanel
+                  count={count}
+                  isValidCount={isValidCount}
+                  isUnderLimit={isUnderLimit}
+                  isLoading={isLoading}
+                  onGenerate={handleGenerate}
+                  result={liveResult}
+                  meta={meta}
+                  onMetaChange={handleMetaChange}
+                />
+              ) : (
+                <FiltersPanel
+                  filters={filters}
+                  toggleFilter={toggleFilter}
+                  isValidCount={isValidCount}
+                  isUnderLimit={isUnderLimit}
+                  isLoading={isLoading}
+                  onGenerate={handleGenerate}
+                />
+              )}
+            </section>
           </div>
-
-          {/* Resultado do Modo 5 Jogos (aparece abaixo do grid) */}
-          {isCincoJogos && liveResult && (
-            <FiveGamesResultSection
-              result={liveResult}
-              editableGames={editableGames ?? []}
-              copiedIndex={copiedIndex}
-              onCopy={copyGameToClipboard}
-              onExport={handleExportFiveGames}
-              exported={exported}
-              meta={meta}
-              onDragStart={handleDragStart}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-              onDragEnd={handleDragEnd}
-              onReset={handleResetJogos}
-              dragInfo={dragInfo}
-              dragOverIdx={dragOverIdx}
-              invalidDropIdx={invalidDropIdx}
-            />
-          )}
-          {isCincoJogos && liveResult && <ProbabilisticAnalysis result={liveResult} />}
-          {isCincoJogos && liveResult && <SimulacaoHistorica jogos={liveResult.games} conjunto />}
-          {isCincoJogos && liveResult && (
-            <>
-              <ComparacaoConcurso
-                jogos={liveResult.games}
-                titulo="Conferir com Sorteio"
-                subtitulo="Digite as 6 dezenas sorteadas para ver quantos acertos cada jogo teria"
-                botaoLabel="Conferir"
-                permitirBuscaConcurso={false}
-              />
-              <div className="flex justify-center sm:justify-start">
-                <PrintableVersion jogos={jogosComScore(liveResult.games)} modo="Modo 5 Jogos" />
-              </div>
-            </>
-          )}
-        </section>
-
-        {/* Right Column: Filters (Desdobramento) / Painel 5 Jogos */}
-        <section className="lg:col-span-5 xl:col-span-4 space-y-6">
-          {isCincoJogos ? (
-            <FiveGamesPanel
-              count={count}
-              isValidCount={isValidCount}
-              isUnderLimit={isUnderLimit}
-              isLoading={isLoading}
-              onGenerate={handleGenerate}
-              result={liveResult}
-              meta={meta}
-              onMetaChange={handleMetaChange}
-            />
-          ) : (
-            <FiltersPanel
-              filters={filters}
-              toggleFilter={toggleFilter}
-              isValidCount={isValidCount}
-              isUnderLimit={isUnderLimit}
-              isLoading={isLoading}
-              onGenerate={handleGenerate}
-            />
-          )}
-        </section>
-      </div>
+          {/* Fim do bloco não-torneio */}
+        </>
+      )}
+      {/* Histórico de Conferências (Modo 5 Jogos e Desdobramento) */}
+      {!isTorneio && isCincoJogos && (
+        <HistoricoConferencias historico={historico} onLimpar={limpar} />
+      )}
     </div>
   )
 }
@@ -593,6 +629,12 @@ const ModeToggle: React.FC<{
       label: 'Modo 5 Jogos',
       icon: <Target className="w-4 h-4" />,
       hint: '5 jogos otimizados de 5 dezenas',
+    },
+    {
+      key: 'torneio',
+      label: 'Modo Torneio',
+      icon: <Swords className="w-4 h-4" />,
+      hint: 'Compare dois grupos lado a lado',
     },
   ]
 
@@ -1391,6 +1433,7 @@ const FiveGameScoreBar: React.FC<{ game: number[] }> = ({ game }) => {
           </span>
         )}
       </div>
+      <GameScoreRadar game={game} />
     </div>
   )
 }
