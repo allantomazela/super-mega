@@ -33,20 +33,20 @@ import {
   formatGameString,
   formatCurrencyBRL,
   formatNumberBR,
-  optimizeFiveGamesV2,
   optimizeFiveGamesV3,
   buildFiveGamesExportText,
   calculateGameScore,
-  computeScoreV2,
+  computeScoreV3,
   formatScoreBreakdown,
   SCORE_ELITE_THRESHOLD,
   getScoreColor,
-  probabilityAtLeastFourPlus,
+  calcularProbabilidadeCombinada,
   recomputeFiveGamesResult,
+  calcularEV,
+  FIVE_GAMES_COUNT,
   calcularFrequencias,
   frequenciaMediaGlobal,
   calcularProbabilidadesJogo,
-  calcularProbabilidadeCombinada,
   calcularEVConjunto,
   calcularEVPorReal,
   probExataMegaSena,
@@ -57,7 +57,10 @@ import {
   OptimizationMeta,
   META_WEIGHTS,
   DEFAULT_META,
+  coverageEfficiency,
+  FIVE_GAMES_SIZE,
 } from '@/lib/megaEngine'
+import { estimatePopularityFactor } from '@/lib/popularityModel'
 import { ToggleSwitch } from '@/components/ToggleSwitch'
 import { SimulacaoHistorica } from '@/components/SimulacaoHistorica'
 import { PrintableVersion, jogosComScore } from '@/components/PrintableVersion'
@@ -1193,8 +1196,8 @@ const FiveGamesResultSection: React.FC<{
         </div>
       </div>
 
-      {/* Estatísticas de cobertura + Score médio */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      {/* Estatísticas de cobertura + Score médio + Schönheim */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
         <div
           className={`surface-card rounded-xl p-4 border flex items-center gap-3 transition-all ${
             meta === 'cobertura'
@@ -1250,6 +1253,7 @@ const FiveGamesResultSection: React.FC<{
           </div>
         </div>
         <AverageScoreCard scores={result.scores} highlight={meta === 'score' || meta === 'elite'} />
+        <SchonheimCard groupSize={result.groupSize} />
       </div>
 
       {/* Cards dos 5 jogos — chips arrastáveis */}
@@ -1384,9 +1388,11 @@ const FiveGamesResultSection: React.FC<{
 const FiveGameScoreBar: React.FC<{ game: number[] }> = ({ game }) => {
   const score = calculateGameScore(game)
   const { textColor, bgClass, label } = getScoreColor(score)
-  const breakdown = computeScoreV2(game)
+  const breakdown = computeScoreV3(game)
   const breakdownStr = formatScoreBreakdown(breakdown)
   const isElite = score >= SCORE_ELITE_THRESHOLD
+  const evJogo = calcularEV(game)
+  const popularidade = estimatePopularityFactor(game)
 
   return (
     <div className="mt-2 pt-2 border-t border-[#262c34]/60 space-y-1">
@@ -1410,10 +1416,11 @@ const FiveGameScoreBar: React.FC<{ game: number[] }> = ({ game }) => {
             side="top"
             className="bg-[#12161b] border-emerald-500/40 text-zinc-200 max-w-[280px] text-[11px] leading-relaxed shadow-[0_0_18px_rgba(16,185,129,0.25)]"
           >
-            <div className="font-semibold text-emerald-400 mb-1">Breakdown do Score</div>
+            <div className="font-semibold text-emerald-400 mb-1">Breakdown do Score (v3)</div>
             <div className="font-mono text-[10px]">{breakdownStr}</div>
             <div className="text-[10px] text-zinc-400 mt-1">
-              A) Hipergeométrica · B) Uniformidade KS · C) Gaps · D) Soma Normal · E) Entropia
+              A) Hipergeométrica · B) Uniformidade KS · C) Gaps · D) Soma Normal · E) Entropia · F)
+              Anti-Popularidade
             </div>
           </TooltipContent>
         </Tooltip>
@@ -1424,6 +1431,7 @@ const FiveGameScoreBar: React.FC<{ game: number[] }> = ({ game }) => {
           style={{ width: `${score}%` }}
         />
       </div>
+      * Card "Score Médio" — média dos 5 scores com cor correspondente =======
       <div className={`text-[10px] font-bold ${textColor}`}>
         {label}
         {isElite && (
@@ -1433,12 +1441,57 @@ const FiveGameScoreBar: React.FC<{ game: number[] }> = ({ game }) => {
           </span>
         )}
       </div>
+      {/* Linha sutil: EV por jogo + Popularidade */}
+      <div className="text-[10px] text-zinc-500 flex items-center gap-1.5">
+        <span>
+          EV: <span className="text-zinc-400">{formatCurrencyBRL(evJogo)}</span>
+        </span>
+        <span className="text-zinc-600">•</span>
+        <span>
+          Popularidade: <span className="text-zinc-400">{popularidade.toFixed(1)}</span>
+        </span>
+      </div>
       <GameScoreRadar game={game} />
     </div>
   )
 }
 
 /* ============================================================
+ * Card "Eficiência Schönheim" — proximidade do limite teórico
+ * ============================================================ */
+const SchonheimCard: React.FC<{ groupSize: number }> = ({ groupSize }) => {
+  const eficiencia = coverageEfficiency(groupSize, FIVE_GAMES_COUNT, FIVE_GAMES_SIZE, 2)
+  const colorClass =
+    eficiencia >= 60 ? 'text-emerald-400' : eficiencia >= 30 ? 'text-amber-400' : 'text-orange-400'
+
+  return (
+    <div className="surface-card rounded-xl p-4 border border-[#262c34] flex items-center gap-3">
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="w-9 h-9 rounded-lg bg-emerald-950/50 border border-emerald-500/30 flex items-center justify-center text-emerald-400 cursor-help">
+            <Target className="w-4 h-4" />
+          </div>
+        </TooltipTrigger>
+        <TooltipContent
+          side="top"
+          className="bg-[#12161b] border-emerald-500/40 text-zinc-200 max-w-[280px] text-[11px] leading-relaxed shadow-[0_0_18px_rgba(16,185,129,0.25)]"
+        >
+          O limite de Schönheim define o número mínimo teórico de bilhetes para garantir cobertura
+          total de pares (t=2). A eficiência mede quão perto o conjunto está desse limite teórico.
+        </TooltipContent>
+      </Tooltip>
+      <div>
+        <div className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">
+          Eficiência Schönheim
+        </div>
+        <div className={`text-lg font-extrabold ${colorClass}`}>{eficiencia.toFixed(1)}%</div>
+      </div>
+    </div>
+  )
+}
+
+/* ============================================================
+ * Card "Score Médio" — média dos 5 scores com cor correspondente============================================================
  * Card "Score Médio" — média dos 5 scores com cor correspondente
  * ============================================================ */
 const AverageScoreCard: React.FC<{ scores: number[]; highlight?: boolean }> = ({
@@ -1476,8 +1529,12 @@ const AverageScoreCard: React.FC<{ scores: number[]; highlight?: boolean }> = ({
  * Análise Probabilística — seção abaixo dos 5 bilhetes
  * ============================================================ */
 const ProbabilisticAnalysis: React.FC<{ result: FiveGamesResult }> = ({ result }) => {
-  const probAtLeast4 = probabilityAtLeastFourPlus(result.games)
-  const probPercent = (probAtLeast4 * 100).toFixed(4)
+  // Probabilidade combinada (Bonferroni 2ª ordem) — motor v3
+  const probCombinada = calcularProbabilidadeCombinada(result.games)
+  const probPercent = (probCombinada.peloMenosQuadra * 100).toFixed(4)
+  // Valor Esperado (EV) total + EV por real — motor v3
+  const evTotal = calcularEVConjunto(result.games)
+  const evPorReal = calcularEVPorReal(result.games)
   // Probabilidade de um único jogo de 6 dezenas (referência Mega-Sena)
   const probSingleQuadra =
     (binomialCoefficientLocal(6, 4) * binomialCoefficientLocal(54, 2)) /
@@ -1494,6 +1551,41 @@ const ProbabilisticAnalysis: React.FC<{ result: FiveGamesResult }> = ({ result }
           <h3 className="text-base font-bold text-white tracking-tight">Análise Probabilística</h3>
           <p className="text-xs text-zinc-400">
             Cálculos rigorosos por distribuição hipergeométrica
+          </p>
+        </div>
+      </div>
+
+      {/* Métricas do conjunto: EV Total, Prob. ≥Quadra, EV por real */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="p-4 rounded-xl bg-[#161a1f] border border-[#262c34]">
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1">
+            EV Total
+          </div>
+          <div className="text-2xl font-extrabold text-emerald-400">
+            {formatCurrencyBRL(evTotal)}
+          </div>
+          <p className="text-[11px] text-zinc-500 mt-1.5 leading-relaxed">
+            Valor esperado agregado dos 5 jogos (soma dos EVs individuais).
+          </p>
+        </div>
+        <div className="p-4 rounded-xl bg-[#161a1f] border border-[#262c34]">
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1">
+            Prob. ≥ Quadra
+          </div>
+          <div className="text-2xl font-extrabold text-emerald-400">{probPercent}%</div>
+          <p className="text-[11px] text-zinc-500 mt-1.5 leading-relaxed">
+            Bonferroni 2ª ordem (inclusão-exclusão) — probabilidade de ao menos 1 jogo acertar
+            quadra ou mais.
+          </p>
+        </div>
+        <div className="p-4 rounded-xl bg-[#161a1f] border border-[#262c34]">
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1">
+            EV por real
+          </div>
+          <div className="text-2xl font-extrabold text-emerald-400">{evPorReal.toFixed(3)}</div>
+          <p className="text-[11px] text-zinc-500 mt-1.5 leading-relaxed">
+            Razão entre o EV total e o custo da aposta — quanto cada real apostado renderia em valor
+            esperado.
           </p>
         </div>
       </div>

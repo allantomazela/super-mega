@@ -1,3 +1,16 @@
+/* ============================================================
+ * Otimizador Estratégico Mega-Sena — Motor Probabilístico v3
+ * ============================================================
+ * Inclui:
+ *   - Filtros combinatórios (paridade, soma, EV, sequência)
+ *   - Schönheim bound + eficiência de cobertura
+ *   - Score v3 (6 critérios: paridade, uniformidade, gaps, soma,
+ *     entropia, anti-popularidade)
+ *   - Probabilidades hipergeométricas exatas
+ *   - Cobertura combinada (Bonferroni 2ª ordem)
+ *   - Modo 5 Jogos / desdobramento / EV
+ * ============================================================ */
+
 export interface FilterOptions {
   parity: boolean
   sum: boolean
@@ -14,18 +27,124 @@ export const DEFAULT_FILTERS: FilterOptions = {
 
 export const PRICE_PER_GAME = 5.0
 
+// Import do modelo de popularidade (dependência circular segura em ESM:
+// as funções só são invocadas em runtime, nunca na avaliação do módulo).
+import { estimatePopularityFactor, popularidadeLabel, calculateRealEVJogo } from './popularityModel'
+
+/* ============================================================
+ * Limite Inferior de Schönheim — Covering Designs
+ * ============================================================
+ * Para um (v, k, t) covering design (v dezenas, blocos de tamanho k,
+=======
+export const PRICE_PER_GAME = 5.0
+
+// Import do modelo de popularidade (dependência circular segura em ESM:
+// as funções só são invocadas em runtime, nunca na avaliação do módulo).
+import {
+  estimatePopularityFactor,
+  popularidadeLabel,
+  calculateRealEVJogo,
+} from './popularityModel'
+
+/* ============================================================
+ * Limite Inferior de Schönheim — Covering Designs
+ * ============================================================
+ * Para um (v, k, t) covering design (v dezenas, blocos de tamanho k,
+ * cobertura t), o limite inferior de Schönheim fornece o número
+ * MÍNIMO teórico de bilhetes para garantir cobertura total t:
+ *
+ *   L(v, k, t) ≥ ⌈(v/k) · L(v-1, k-1, t-1)⌉
+ *
+ * Casos base:
+ *   L(v, k, 1) = ⌈v/k⌉
+ *   L(v, k, k) = C(v, k)   (cobertura total de k-acertos)
+ *
+ * Referência: Schönheim (1964).
+ * ============================================================ */
+
+/**
+ * Calcula o limite inferior de Schönheim L(v, k, t) — número mínimo
+ * teórico de bilhetes para garantir cobertura t num (v,k,t) design.
+ *
+ * @param v total de dezenas do universo
+ * @param k tamanho de cada bilhete
+ * @param t alvo de cobertura (ex.: 2 = garantir todos os pares)
+ */
+export function schonheimBound(v: number, k: number, t: number): number {
+  if (v <= 0 || k <= 0 || t <= 0) return 0
+  if (t > k) return 0
+  if (t > v) return 0
+  // Caso base: L(v, k, 1) = ⌈v/k⌉
+  if (t === 1) return Math.ceil(v / k)
+  // Caso base: L(v, k, k) = C(v, k)
+  if (t === k) return binomialCoefficient(v, k)
+  // Recursão: ⌈(v/k) · L(v-1, k-1, t-1)⌉
+  const sub = schonheimBound(v - 1, k - 1, t - 1)
+  return Math.ceil((v / k) * sub)
+}
+
+/**
+ * Eficiência de cobertura: razão entre o limite teórico de Schönheim
+ * e o número de bilhetes usados (%).
+ *
+ *   eficiência = schonheimBound / ticketCount × 100
+ *
+ * Ex.: Schönheim = 15, bilhetes usados = 5 → eficiência 33%.
+ * Quanto maior a %, melhor a eficiência (menos bilhetes que o mínimo).
+ *
+ * @param selectedCount nº de dezenas do universo (v)
+ * @param ticketCount nº de bilhetes usados
+ * @param ticketSize tamanho de cada bilhete (k)
+ * @param targetHits alvo de cobertura (t)
+ */
+export function coverageEfficiency(
+  selectedCount: number,
+  ticketCount: number,
+  ticketSize: number,
+  targetHits: number,
+): number {
+  if (ticketCount <= 0) return 0
+  const bound = schonheimBound(selectedCount, ticketSize, targetHits)
+  if (bound <= 0) return 0
+  const eff = (bound / ticketCount) * 100
+  return Math.round(eff * 10) / 10
+}
+
+/* ============================================================
+ * Coeficiente Binomial — C(n, k)
+ * ============================================================
+ * Algoritmo multiplicativo: evita overflow de fatoriais e é
+ * numericamente estável para os cálculos hipergeométricos da
+ * Mega-Sena (N=60). Retorna o valor exato como Number (preciso
+ * até 2^53, suficiente para C(60,30)).
+ * ============================================================ */
+export function binomialCoefficient(n: number, k: number): number {
+  if (k < 0 || k > n) return 0
+  if (k === 0 || k === n) return 1
+  // Simetria: C(n,k) == C(n, n-k)
+  const kk = Math.min(k, n - k)
+  let result = 1
+  for (let i = 1; i <= kk; i++) {
+    // result = result * (n - kk + i) / i
+    // Multiplica antes e divide a cada passo mantendo inteiro
+    result = (result * (n - kk + i)) / i
+  }
+  return Math.round(result)
+}
+
 /* ============================================================
  * Motor Probabilístico Avançado (nível mundial) — v3
  * ============================================================
- * Score de 0–100 baseado em 5 critérios rigorosos (cada 0–20):
+ * Score de 0–100 baseado em 6 critérios rigorosos (cada 0–20):
  *   A) Distribuição Hipergeométrica Multivariada (Paridade)
  *   B) Teste de Kolmogorov-Smirnov para Uniformidade
  *   C) Análise de Gaps e Autocorrelação (CV dos gaps)
  *   D) Soma com Distribuição Normal (Z-score, gaussiana)
  *   E) Entropia de Shannon + Informação Mútua (6 décadas)
+ *   F) Anti-Popularidade (modelo de EV real / divisão de prêmio)
  *
- * Combinação ponderada:
- *   0.22·A + 0.22·B + 0.20·C + 0.18·D + 0.18·E
+ * Combinação ponderada (v3):
+ *   0.20·A + 0.20·B + 0.18·C + 0.16·D + 0.16·E + 0.10·F
  * normalizado para 0–100 com precisão de 1 casa decimal.
  * ============================================================ */
 
@@ -42,6 +161,8 @@ export interface ScoreBreakdown {
   soma: number
   /** E) Pontuação da entropia / décadas (0-20). */
   entropia: number
+  /** F) Pontuação anti-popularidade (0-20). Combinações impopulares ganham mais. */
+  antiPopularidade: number
 }
 
 /** Estatísticas da paridade (para exibição). */
@@ -56,13 +177,14 @@ const MS_N = 60
 const MS_EVEN = 30 // nº de pares em [1,60]
 const MS_ODD = 30 // nº de ímpares em [1,60]
 
-/** Pesos de combinação do score final (A..E). */
+/** Pesos de combinação do score final (A..F) — v3 com Anti-Popularidade. */
 const SCORE_WEIGHTS = {
-  paridade: 0.22, // A
-  uniformidade: 0.22, // B
-  gaps: 0.2, // C
-  soma: 0.18, // D
-  entropia: 0.18, // E
+  paridade: 0.2, // A
+  uniformidade: 0.2, // B
+  gaps: 0.18, // C
+  soma: 0.16, // D
+  entropia: 0.16, // E
+  antiPopularidade: 0.1, // F
 } as const
 
 /** Clamp utilitário. */
@@ -72,20 +194,6 @@ function clamp(x: number, lo: number, hi: number): number {
 
 /* ------------------------------------------------------------
  * A) Distribuição Hipergeométrica Multivariada — Paridade (0-20)
- * ------------------------------------------------------------
- * Em [1,60] há exatamente 30 pares e 30 ímpares. A contagem de
- * pares num jogo de tamanho n segue a hipergeométrica:
- *
- *   P(pares = p) = C(30, p) · C(30, n−p) / C(60, n)
- *
- * A configuração esperada (moda) é p* ≈ n/2. Comparamos a
- * probabilidade observada P_obs com a probabilidade esperada
- * P_exp (= P no modo) e pontuamos por proximidade relativa:
- *
- *   score = 20 · (1 − |P_obs − P_exp| / P_exp), clamp [0,20].
- *
- * Quando P_exp = 0 (configuração impossível), fallback pelo
- * desvio normalizado da contagem.
  * ------------------------------------------------------------ */
 function hypergeometricParityScore(game: number[]): {
   score: number
@@ -101,11 +209,9 @@ function hypergeometricParityScore(game: number[]): {
   const denom = binomialCoefficient(MS_N, n)
   if (denom === 0) return { score: 0, pares, pObs: 0, pExp: 0 }
 
-  // Probabilidade observada da configuração (pares, ímpares)
   const numObs = binomialCoefficient(MS_EVEN, pares) * binomialCoefficient(MS_ODD, impares)
   const pObs = numObs / denom
 
-  // Moda esperada: p* = inteiro mais próximo de n/2 dentro de [0,n]
   const pStar = Math.max(0, Math.min(n, Math.round(n / 2)))
   const numExp = binomialCoefficient(MS_EVEN, pStar) * binomialCoefficient(MS_ODD, n - pStar)
   const pExp = numExp / denom
@@ -115,7 +221,6 @@ function hypergeometricParityScore(game: number[]): {
     const rel = Math.abs(pObs - pExp) / pExp
     score = 20 * (1 - rel)
   } else {
-    // Fallback: desvio normalizado da contagem em relação a n/2
     const dev = Math.abs(pares - n / 2) / (n / 2 || 1)
     score = 20 * (1 - dev)
   }
@@ -124,14 +229,6 @@ function hypergeometricParityScore(game: number[]): {
 
 /* ------------------------------------------------------------
  * B) Kolmogorov-Smirnov para Uniformidade (0-20)
- * ------------------------------------------------------------
- * Trata as n dezenas como amostra de Uniforme(1,60). A CDF
- * esperada é F(x) = x/60. Calculamos a estatística D de KS:
- *
- *   D = max |F_obs(x) − F_exp(x)|
- *
- * D baixo ⇒ distribuição mais uniforme ⇒ melhor.
- *   score = 20 · (1 − D), com D ∈ [0,1].
  * ------------------------------------------------------------ */
 function ksUniformityScore(game: number[]): { score: number; d: number } {
   const n = game.length
@@ -153,16 +250,6 @@ function ksUniformityScore(game: number[]): { score: number; d: number } {
 
 /* ------------------------------------------------------------
  * C) Análise de Gaps e Autocorrelação (0-20)
- * ------------------------------------------------------------
- * Calcula os gaps entre dezenas consecutivas ordenadas. O gap
- * esperado é ≈ (60−1)/(n−1) = 59/(n−1). Avaliamos o coeficiente
- * de variação (CV = σ/μ) dos gaps:
- *   - CV ≈ 0  → gaps idênticos (padrão humano, muito regular)
- *   - CV ≈ 0.5 → variação natural ligeira (ótimo)
- *   - CV muito alto → espaçamento caótico/concentrado
- *
- * Também penalizamos gaps puramente iguais (todos iguais) e
- * padrões periódicos (autocorrelação positiva de lag-1).
  * ------------------------------------------------------------ */
 function gapsAutocorrScore(game: number[]): { score: number; cv: number } {
   const n = game.length
@@ -179,24 +266,19 @@ function gapsAutocorrScore(game: number[]): { score: number; cv: number } {
   const stdGap = Math.sqrt(variance)
   const cv = stdGap / meanGap
 
-  // Score por CV: máximo em cv ≈ 0.5, decai dos dois lados.
-  // Ideal = 0.5; penaliza regularidade (cv→0) e caos (cv→alto).
   const ideal = 0.5
   const dev = Math.abs(cv - ideal)
   const cvScore = Math.exp(-(dev * dev) / (2 * 0.45 * 0.45))
 
-  // Penalidade por gaps todos iguais (padrão humano)
   const allEqual = gaps.every((g) => g === gaps[0])
   const equalPenalty = allEqual ? 0.4 : 1.0
 
-  // Autocorrelação lag-1 dos gaps
   let autocov = 0
   for (let i = 0; i < m - 1; i++) {
     autocov += (gaps[i] - meanGap) * (gaps[i + 1] - meanGap)
   }
   autocov = m > 1 ? autocov / (m - 1) : 0
   const autocorr = variance > 0 ? autocov / variance : 0
-  // |autocorr| alto → padrão periódico → penaliza
   const autocorrPenalty = 1 - Math.min(0.5, Math.abs(autocorr))
 
   const score = 20 * cvScore * equalPenalty * autocorrPenalty
@@ -205,9 +287,6 @@ function gapsAutocorrScore(game: number[]): { score: number; cv: number } {
 
 /* ------------------------------------------------------------
  * D) Soma com Distribuição Normal (0-20)
- * ------------------------------------------------------------
- * μ = n·30.5, σ = √(n·(60²−1)/12). z = |soma−μ|/σ.
- * Score = 20·exp(−z²/2) — penalização gaussiana.
  * ------------------------------------------------------------ */
 function sumNormalScore(game: number[]): { score: number; z: number } {
   const n = game.length
@@ -223,10 +302,6 @@ function sumNormalScore(game: number[]): { score: number; z: number } {
 
 /* ------------------------------------------------------------
  * E) Entropia de Shannon + Informação Mútua (0-20)
- * ------------------------------------------------------------
- * Divide [1,60] em 6 décadas (1-10, 11-20, …, 51-60). Calcula a
- * entropia H = −Σ pi·ln(pi) normalizada por ln(6). Bônus quando
- * a distribuição entre décadas é próxima da uniforme.
  * ------------------------------------------------------------ */
 function shannonEntropyScore(game: number[]): { score: number; h: number } {
   const n = game.length
@@ -245,13 +320,10 @@ function shannonEntropyScore(game: number[]): { score: number; h: number } {
     }
   })
   const hmax = Math.log(6)
-  const hNorm = hmax > 0 ? h / hmax : 0 // 0..1
+  const hNorm = hmax > 0 ? h / hmax : 0
 
-  // Base pela entropia normalizada (0..14 pts)
   const base = 14 * hNorm
 
-  // Bônus (0..6 pts) se a distribuição é próxima da uniforme.
-  // Mede o desvio máximo de cada década em relação a n/6.
   const expected = n / 6
   const maxDev = Math.max(...decades.map((c) => Math.abs(c - expected)))
   const maxDevRel = expected > 0 ? maxDev / expected : 1
@@ -261,24 +333,44 @@ function shannonEntropyScore(game: number[]): { score: number; h: number } {
   return { score: clamp(score, 0, 20), h: hNorm }
 }
 
+/* ------------------------------------------------------------
+ * F) Anti-Popularidade (0-20) — critério v3
+ * ------------------------------------------------------------
+ * Combinações impopulares (menos prováveis de dividir prêmio) ganham
+ * mais pontos. Baseado no fator de popularidade (0.5 a 2.0):
+ *   score = 20 × (2 - popularityFactor) / 1.5
+ *   popularityFactor = 2.0 → score 0    (muito popular)
+ *   popularityFactor = 1.0 → score 13.3 (neutro)
+ *   popularityFactor = 0.5 → score 20   (muito impopular)
+ * ------------------------------------------------------------ */
+function antiPopularidadeScore(jogo: number[]): number {
+  const fator = estimatePopularityFactor(jogo)
+  const score = (20 * (2 - fator)) / 1.5
+  return clamp(score, 0, 20)
+}
+
 /**
  * Calcula o Score Probabilístico Avançado (computeScoreV2) de um jogo,
- * com breakdown detalhado dos 5 critérios (cada 0-20, total 0-100).
- *
- * Combinação ponderada:
- *   0.22·A + 0.22·B + 0.20·C + 0.18·D + 0.18·E
- * normalizado para 0-100 com precisão de 1 casa decimal.
+ * com breakdown detalhado dos 5 critérios originais (cada 0-20).
+ * Mantido para compatibilidade — não inclui o critério F (anti-popularidade).
  *
  * @param jogo Dezenas do jogo
- * @param _historicoFrequencias Opcional (mantido para compat. de assinatura;
- *   o novo motor não depende de frequências históricas).
+ * @param _historicoFrequencias Opcional (mantido para compat. de assinatura).
  */
 export function computeScoreV2(
   jogo: number[],
   _historicoFrequencias?: Map<number, number>,
 ): ScoreBreakdown {
   if (!jogo || jogo.length === 0) {
-    return { total: 0, paridade: 0, uniformidade: 0, gaps: 0, soma: 0, entropia: 0 }
+    return {
+      total: 0,
+      paridade: 0,
+      uniformidade: 0,
+      gaps: 0,
+      soma: 0,
+      entropia: 0,
+      antiPopularidade: 0,
+    }
   }
   const paridade = hypergeometricParityScore(jogo).score
   const uniformidade = ksUniformityScore(jogo).score
@@ -286,14 +378,9 @@ export function computeScoreV2(
   const soma = sumNormalScore(jogo).score
   const entropia = shannonEntropyScore(jogo).score
 
+  // Pesos v2 (sem antiPopularidade)
   const weighted =
-    paridade * SCORE_WEIGHTS.paridade +
-    uniformidade * SCORE_WEIGHTS.uniformidade +
-    gaps * SCORE_WEIGHTS.gaps +
-    soma * SCORE_WEIGHTS.soma +
-    entropia * SCORE_WEIGHTS.entropia
-  // Cada critério é 0-20; a soma dos pesos = 1, logo weighted ∈ [0,20].
-  // Normaliza para 0-100 (×5) e arredonda para 1 casa decimal.
+    paridade * 0.22 + uniformidade * 0.22 + gaps * 0.2 + soma * 0.18 + entropia * 0.18
   const total = Math.round(clamp(weighted * 5, 0, 100) * 10) / 10
 
   return {
@@ -303,16 +390,65 @@ export function computeScoreV2(
     gaps,
     soma,
     entropia,
+    antiPopularidade: 0,
+  }
+}
+
+/**
+ * Calcula o Score Probabilístico Avançado v3 (computeScoreV3) —
+ * inclui o 6º critério "Anti-Popularidade".
+ *
+ * Combinação ponderada (v3):
+ *   0.20·A + 0.20·B + 0.18·C + 0.16·D + 0.16·E + 0.10·F
+ *
+ * @param jogo Dezenas do jogo
+ */
+export function computeScoreV3(jogo: number[]): ScoreBreakdown {
+  if (!jogo || jogo.length === 0) {
+    return {
+      total: 0,
+      paridade: 0,
+      uniformidade: 0,
+      gaps: 0,
+      soma: 0,
+      entropia: 0,
+      antiPopularidade: 0,
+    }
+  }
+  const paridade = hypergeometricParityScore(jogo).score
+  const uniformidade = ksUniformityScore(jogo).score
+  const gaps = gapsAutocorrScore(jogo).score
+  const soma = sumNormalScore(jogo).score
+  const entropia = shannonEntropyScore(jogo).score
+  const antiPopularidade = antiPopularidadeScore(jogo)
+
+  const weighted =
+    paridade * SCORE_WEIGHTS.paridade +
+    uniformidade * SCORE_WEIGHTS.uniformidade +
+    gaps * SCORE_WEIGHTS.gaps +
+    soma * SCORE_WEIGHTS.soma +
+    entropia * SCORE_WEIGHTS.entropia +
+    antiPopularidade * SCORE_WEIGHTS.antiPopularidade
+  const total = Math.round(clamp(weighted * 5, 0, 100) * 10) / 10
+
+  return {
+    total,
+    paridade,
+    uniformidade,
+    gaps,
+    soma,
+    entropia,
+    antiPopularidade,
   }
 }
 
 /**
  * Formata o breakdown do score para exibição em tooltip.
- * Formato: "Paridade: 18.2 | Uniformidade: 17.5 | Gaps: 16.8 | Soma: 19.1 | Entropia: 15.4"
+ * Inclui o critério F (Anti-Popularidade).
  */
 export function formatScoreBreakdown(b: ScoreBreakdown): string {
   const f = (x: number) => x.toFixed(1)
-  return `Paridade: ${f(b.paridade)} | Uniformidade: ${f(b.uniformidade)} | Gaps: ${f(b.gaps)} | Soma: ${f(b.soma)} | Entropia: ${f(b.entropia)}`
+  return `Paridade: ${f(b.paridade)} | Uniformidade: ${f(b.uniformidade)} | Gaps: ${f(b.gaps)} | Soma: ${f(b.soma)} | Entropia: ${f(b.entropia)} | Anti-Pop: ${f(b.antiPopularidade)}`
 }
 
 /**
@@ -322,8 +458,6 @@ export function paridadeStats(jogo: number[]): ParidadeStats {
   const n = jogo.length
   const pares = jogo.filter((x) => x % 2 === 0).length
   const { pObs, pExp } = hypergeometricParityScore(jogo)
-  // p-Value aproximado: 1 − razão entre P_obs e P_exp (quanto mais
-  // próximo de 1, mais "esperada" é a configuração).
   const pValue = pExp > 0 ? clamp(1 - Math.abs(pObs - pExp) / pExp, 0, 1) : 1
   return { pares, impares: n - pares, pValue }
 }
@@ -343,15 +477,14 @@ export function somaStats(jogo: number[]): { z: number; media: number; soma: num
 
 /* ============================================================
  * Premiação média Mega-Sena (valores atualizados 2025)
- * Usada para o cálculo de Valor Esperado (EV).
  * ============================================================ */
 export const PRIZE_QUADRA = 1000
 export const PRIZE_QUINA = 50000
 export const PRIZE_SENA = 5000000
 
 /**
- * Generates all combinations of k items from array arr
- * Returns sorted combinations (each game sorted ascending)
+ * Generates all combinations of k items from array arr.
+ * Returns sorted combinations (each game sorted ascending).
  */
 export function generateCombinations(arr: number[], k: number = 6): number[][] {
   const sorted = [...arr].sort((a, b) => a - b)
@@ -362,8 +495,6 @@ export function generateCombinations(arr: number[], k: number = 6): number[][] {
       results.push([...current])
       return
     }
-
-    // If remaining elements are not enough to reach k, prune
     const needed = k - current.length
     const available = sorted.length - startIndex
     if (available < needed) return
@@ -379,39 +510,26 @@ export function generateCombinations(arr: number[], k: number = 6): number[][] {
   return results
 }
 
-/**
- * Filter 1: Parity (Paridade)
- * Keep games with 2, 3, or 4 even numbers (eliminate 0, 1, 5, 6 evens)
- */
+/** Filter 1: Parity — keep games with 2, 3, or 4 even numbers. */
 export function passesParityFilter(game: number[]): boolean {
   const evenCount = game.filter((n) => n % 2 === 0).length
   return evenCount >= 2 && evenCount <= 4
 }
 
-/**
- * Filter 2: Sum (Soma)
- * Eliminate games where sum < 120 or sum > 240
- */
+/** Filter 2: Sum — eliminate games where sum < 120 or sum > 240. */
 export function passesSumFilter(game: number[]): boolean {
   const sum = game.reduce((acc, curr) => acc + curr, 0)
   return sum >= 120 && sum <= 240
 }
 
-/**
- * Filter 3: Expected Value (Valor Esperado - Datas)
- * Eliminate games with 4 or more numbers between 1 and 31 (inclusive)
- */
+/** Filter 3: Expected Value (datas) — eliminate 4+ numbers between 1-31. */
 export function passesExpectedValueFilter(game: number[]): boolean {
   const calendarNumbersCount = game.filter((n) => n >= 1 && n <= 31).length
   return calendarNumbersCount < 4
 }
 
-/**
- * Filter 4: Sequence (Sequência)
- * Eliminate games with 3 or more numbers in pure consecutive sequence (e.g. n, n+1, n+2)
- */
+/** Filter 4: Sequence — eliminate 3+ pure consecutive numbers. */
 export function passesSequenceFilter(game: number[]): boolean {
-  // Game is already sorted in ascending order
   for (let i = 0; i <= game.length - 3; i++) {
     if (game[i + 1] === game[i] + 1 && game[i + 2] === game[i] + 2) {
       return false
@@ -420,9 +538,7 @@ export function passesSequenceFilter(game: number[]): boolean {
   return true
 }
 
-/**
- * Apply all enabled filters in sequence
- */
+/** Apply all enabled filters in sequence. */
 export function applyFilters(combinations: number[][], filters: FilterOptions): number[][] {
   return combinations.filter((game) => {
     if (filters.parity && !passesParityFilter(game)) return false
@@ -433,23 +549,17 @@ export function applyFilters(combinations: number[][], filters: FilterOptions): 
   })
 }
 
-/**
- * Format number with leading zero (e.g. 3 -> "03")
- */
+/** Format number with leading zero (e.g. 3 -> "03"). */
 export function formatTwoDigits(num: number): string {
   return num < 10 ? `0${num}` : `${num}`
 }
 
-/**
- * Format game numbers as formatted string "03 - 15 - 22 - 27 - 34 - 41"
- */
+/** Format game numbers as "03 - 15 - 22 - 27 - 34 - 41". */
 export function formatGameString(game: number[]): string {
   return game.map(formatTwoDigits).join(' - ')
 }
 
-/**
- * Format currency in BRL (R$ 1.500,00)
- */
+/** Format currency in BRL (R$ 1.500,00). */
 export function formatCurrencyBRL(val: number): string {
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
@@ -459,138 +569,10 @@ export function formatCurrencyBRL(val: number): string {
   }).format(val)
 }
 
-/**
- * Format integer numbers in pt-BR (e.g. 5005 -> "5.005")
- */
+/** Format integer numbers in pt-BR (e.g. 5005 -> "5.005"). */
 export function formatNumberBR(num: number): string {
   return new Intl.NumberFormat('pt-BR').format(num)
 }
-
-/* ============================================================
- * Coeficiente Binomial — C(n, k)
- * Algoritmo multiplicativo: evita overflow de fatoriais e é
- * numericamente estável para os cálculos hipergeométricos da
- * Mega-Sena (N=60). Retorna o valor exato como Number (preciso
- * até 2^53, suficiente para C(60,30)).
- * ============================================================ */
-export function binomialCoefficient(n: number, k: number): number {
-  if (k < 0 || k > n) return 0
-  if (k === 0 || k === n) return 1
-  // Simetria: C(n,k) == C(n, n-k)
-  const kk = Math.min(k, n - k)
-  let result = 1
-  for (let i = 1; i <= kk; i++) {
-    // result = result * (n - kk + i) / i
-    // Multiplica antes e divide a cada passo mantendo inteiro
-    result = (result * (n - kk + i)) / i
-  }
-  return Math.round(result)
-}
-
-/* ============================================================
- * Funções estatísticas auxiliares (log-gama, qui-quadrado, normal)
- * Mantidas para referência/futuras extensões; o motor de score v3
- * não depende mais delas, mas são usadas por cálculos de probabilidade.
- * ============================================================ */
-
-/**
- * Função log-gama (aproximação de Lanczos). Retorna ln(Γ(x)).
- */
-function logGamma(x: number): number {
-  const g = 7
-  const c = [
-    0.99999999999980993, 676.5203681218851, -1259.1392167224028, 771.32342877765313,
-    -176.61502916214059, 12.507343278686905, -0.13857109526572012, 9.9843695780195716e-6,
-    1.5056327351493116e-7,
-  ]
-  if (x < 0.5) {
-    // Reflexão: Γ(x)Γ(1-x) = π / sin(πx)
-    return Math.log(Math.PI / Math.sin(Math.PI * x)) - logGamma(1 - x)
-  }
-  x -= 1
-  let a = c[0]
-  const t = x + g + 0.5
-  for (let i = 1; i < g + 2; i++) {
-    a += c[i] / (x + i)
-  }
-  return 0.5 * Math.log(2 * Math.PI) + (x + 0.5) * Math.log(t) - t + Math.log(a)
-}
-
-/**
- * CDF (função de distribuição acumulada) da distribuição qui-quadrado
- * com `df` graus de liberdade. Implementa a série da função gama
- * incompleta regularizada P(a, x).
- */
-function chiSquareCDF(x: number, df: number): number {
-  if (x <= 0) return 0
-  if (df <= 0) return 1
-  const a = df / 2
-  const xx = x / 2
-  if (xx < a + 1) {
-    let term = 1 / a
-    let sum = term
-    for (let n = 1; n < 200; n++) {
-      term *= xx / (a + n)
-      sum += term
-      if (Math.abs(term) < Math.abs(sum) * 1e-12) break
-    }
-    const logPrefix = a * Math.log(xx) - xx - logGamma(a)
-    return Math.max(0, Math.min(1, Math.exp(logPrefix) * sum))
-  } else {
-    let b = xx + 1 - a
-    let c = Number.MAX_VALUE / 10
-    let d = 1 / b
-    let h = d
-    for (let i = 1; i < 200; i++) {
-      const an = -i * (i - a)
-      b += 2
-      d = an * d + b
-      if (Math.abs(d) < 1e-300) d = 1e-300
-      c = b + an / c
-      if (Math.abs(c) < 1e-300) c = 1e-300
-      d = 1 / d
-      const del = d * c
-      h *= del
-      if (Math.abs(del - 1) < 1e-12) break
-    }
-    const logPrefix = a * Math.log(xx) - xx - logGamma(a)
-    const q = Math.exp(logPrefix) * h
-    return Math.max(0, Math.min(1, 1 - q))
-  }
-}
-
-/**
- * Retorna o p-value do teste qui-quadrado: P(X² ≥ estat) com df.
- */
-function chiSquarePValue(stat: number, df: number): number {
-  if (df <= 0) return 1
-  return Math.max(0, Math.min(1, 1 - chiSquareCDF(stat, df)))
-}
-
-/**
- * CDF da distribuição normal padrão Φ(z). Aproximação de Abramowitz &
- * Stegun 7.1.26.
- */
-function normalCDF(z: number): number {
-  const t = 1 / (1 + 0.2316419 * Math.abs(z))
-  const d = 0.3989422804014327 * Math.exp(-0.5 * z * z)
-  const p =
-    d *
-    t *
-    (0.31938153 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))))
-  return z > 0 ? 1 - p : p
-}
-
-/* chiSquarePValue e normalCDF são mantidas para referência/futuras
- * extensões estatísticas; o motor de score v3 não as invoca. */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-void chiSquarePValue
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-void normalCDF
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-void chiSquareCDF
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-void logGamma
 
 /* ============================================================
  * Distribuição Hipergeométrica Exata
@@ -600,9 +582,6 @@ void logGamma
  * X = nº de sucessos na amostra segue uma hipergeométrica:
  *
  *   P(X = k) = C(K, k) · C(N-K, n-k) / C(N, n)
- *
- * Para a Mega-Sena: N = 60 dezenas, K = 6 sorteadas, n = nº de
- * dezenas apostadas no bilhete.
  * ============================================================ */
 
 /**
@@ -644,21 +623,13 @@ export function probPeloMenos(kMin: number, n: number, N = 60, K = 6): number {
 }
 
 export interface ProbabilidadesJogo {
-  /** Probabilidade de acertar exatamente 4 (quadra). */
   quadra: number
-  /** Probabilidade de acertar exatamente 5 (quina). */
   quina: number
-  /** Probabilidade de acertar exatamente 6 (sena). */
   sena: number
-  /** Probabilidade de acertar pelo menos a quadra. */
   peloMenosQuadra: number
-  /** Probabilidade de acertar pelo menos a quina. */
   peloMenosQuina: number
-  /** Probabilidade de acertar a sena. */
   peloMenosSena: number
-  /** "1 em X" para pelo menos quadra. */
   umEmQuadra: number
-  /** Tamanho do bilhete (n dezenas). */
   tamanho: number
 }
 
@@ -691,28 +662,22 @@ export function calcularProbabilidadesJogo(jogo: number[]): ProbabilidadesJogo {
  * Expected Value (EV) — Valor Esperado com prize pool real
  * ============================================================
  * EV por jogo = P(quadra)·1000 + P(quina)·50000 + P(sena)·5000000 − 5
- * (custo de R$ 5,00 por bilhete simples).
  * ============================================================ */
 
 /**
- * Calcula o Valor Esperado (EV) de um jogo em reais, considerando a
- * premiação média da Mega-Sena (2025) e o custo de R$ 5,00.
+ * Calcula o Valor Esperado (EV) de um jogo em reais.
  */
 export function calcularEV(jogo: number[]): number {
   const p = calcularProbabilidadesJogo(jogo)
   return p.quadra * PRIZE_QUADRA + p.quina * PRIZE_QUINA + p.sena * PRIZE_SENA - PRICE_PER_GAME
 }
 
-/**
- * Calcula o EV total de um conjunto de jogos (soma dos EVs individuais).
- */
+/** Calcula o EV total de um conjunto de jogos (soma dos EVs individuais). */
 export function calcularEVConjunto(jogos: number[][]): number {
   return jogos.reduce((acc, j) => acc + calcularEV(j), 0)
 }
 
-/**
- * Retorna o EV por real apostado (EV / custo total).
- */
+/** Retorna o EV por real apostado (EV / custo total). */
 export function calcularEVPorReal(jogos: number[][]): number {
   const custo = jogos.length * PRICE_PER_GAME
   if (custo === 0) return 0
@@ -727,29 +692,15 @@ export function calcularEVPorReal(jogos: number[][]): number {
  * (2ª ordem):
  *
  *   P(∪ Ai) ≈ Σ P(Ai) − Σ P(Ai ∩ Aj)
- *
- * A interseção P(Ai ∩ Aj) aproxima a probabilidade de AMBOS os
- * jogos acertarem quadra+. Quando os jogos compartilham dezenas,
- * usamos a hipergeométrica multivariada aproximada pelo produto
- * das probabilidades marginais ponderado pelo fator de correlação
- * derivado do número de dezenas compartilhadas.
  * ============================================================ */
 
-/**
- * Probabilidade de um jogo de tamanho n acertar pelo menos `kMin`
- * dezenas (marginal hipergeométrica).
- */
 function probJogoPeloMenos(jogo: number[], kMin: number): number {
   return probPeloMenos(kMin, jogo.length, 60, 6)
 }
 
 /**
  * Aproxima a interseção P(Ai ∩ Aj) — probabilidade de AMBOS os jogos
- * acertarem pelo menos a quadra. Como os jogos compartilham dezenas,
- * os eventos não são independentes. Estimamos a correlação via o nº
- * de dezenas compartilhadas.
- *
- * Modelo: P(Ai∩Aj) ≈ Pi·Pj·(1 + ρ), onde ρ depende da sobreposição.
+ * acertarem pelo menos a quadra. Modelo: P(Ai∩Aj) ≈ Pi·Pj·(1 + ρ).
  */
 function probIntersecaoQuadra(jogoA: number[], jogoB: number[]): number {
   const pA = probJogoPeloMenos(jogoA, 4)
@@ -764,13 +715,9 @@ function probIntersecaoQuadra(jogoA: number[], jogoB: number[]): number {
 }
 
 export interface ProbabilidadeCombinada {
-  /** P(∪Ai) para quadra+ — aproximação de Bonferroni 2ª ordem. */
   peloMenosQuadra: number
-  /** P(∪Ai) para quina+. */
   peloMenosQuina: number
-  /** P(∪Ai) para sena. */
   peloMenosSena: number
-  /** Número de jogos considerados. */
   numJogos: number
 }
 
@@ -880,8 +827,8 @@ export function frequenciaRelativa(
 /* ============================================================
  * Score de Acertividade — API de compatibilidade
  * ============================================================
- * `calculateGameScore` delega para `computeScoreV2` (motor
- * probabilístico avançado v3). Mantém a assinatura original.
+ * `calculateGameScore` delega para `computeScoreV3` (motor
+ * probabilístico avançado v3 com anti-popularidade).
  * ============================================================ */
 
 export interface ScoreColor {
@@ -897,16 +844,15 @@ export interface ScoreColor {
 
 /**
  * Calcula o Score de Acertividade de um jogo (0-100).
- * Usa o motor probabilístico avançado (computeScoreV2): hipergeométrica
- * multivariada, KS de uniformidade, gaps/autocorrelação, soma normal e
- * entropia de Shannon, combinados com pesos 0.22/0.22/0.20/0.18/0.18.
- * Aceita opcionalmente um Map de frequências históricas (compat).
+ * Usa o motor probabilístico avançado v3 (computeScoreV3): 6 critérios
+ * (paridade, uniformidade, gaps, soma, entropia, anti-popularidade).
  */
 export function calculateGameScore(
   game: number[],
   historicoFrequencias?: Map<number, number>,
 ): number {
-  return computeScoreV2(game, historicoFrequencias).total
+  void historicoFrequencias
+  return computeScoreV3(game).total
 }
 
 /**
@@ -980,7 +926,7 @@ export interface FiveGamesResult {
 export function optimizeFiveGames(selected: number[]): FiveGamesResult {
   const group = [...new Set(selected)].sort((a, b) => a - b)
   const groupSize = group.length
-  const totalSlots = FIVE_GAMES_COUNT * FIVE_GAMES_SIZE // 25
+  const totalSlots = FIVE_GAMES_COUNT * FIVE_GAMES_SIZE
 
   const games: number[][] = Array.from({ length: FIVE_GAMES_COUNT }, () => [])
   const usage = new Map<number, number>()
@@ -1069,7 +1015,7 @@ export function optimizeFiveGames(selected: number[]): FiveGamesResult {
  * ============================================================ */
 const V2_MAX_FULL_COMBINATIONS = 21
 
-export type OptimizationMeta = 'cobertura' | 'equilibrado' | 'score' | 'elite'
+export type OptimizationMeta = 'cobertura' | 'equilibrado' | 'score' | 'elite' | 'ev-maximo'
 
 export interface OptimizationWeights {
   score: number
@@ -1081,8 +1027,9 @@ export const META_WEIGHTS: Record<OptimizationMeta, OptimizationWeights> = {
   cobertura: { score: 1, cobertura: 6, sobreposicao: 2 },
   equilibrado: { score: 2, cobertura: 4, sobreposicao: 1 },
   score: { score: 5, cobertura: 1, sobreposicao: 1 },
-  // Meta "Score Elite": prioriza o score máximo mesmo sacrificando cobertura.
   elite: { score: 9, cobertura: 0.2, sobreposicao: 0.5 },
+  // Meta "EV Máximo": pesos especiais tratados no V3 via fórmula própria.
+  'ev-maximo': { score: 2.5, cobertura: 1.5, sobreposicao: 1 },
 }
 
 /** Limiar de "Score Elite" (≥90%). */
@@ -1134,10 +1081,6 @@ export function optimizeFiveGamesV2(
   group.forEach((n) => usage.set(n, 0))
   const coveredSet = new Set<number>()
 
-  // Meta "Score Elite": prioriza jogos com score máximo (≥90%) mesmo
-  // sacrificando cobertura — escolhe sequencialmente os de maior score.
-  // Meta "Melhor Score": maximin — maximiza o score MÍNIMO entre os 5
-  // jogos (não apenas a média).
   const isElite = meta === 'elite'
   const isMaximin = meta === 'score'
 
@@ -1156,10 +1099,8 @@ export function optimizeFiveGamesV2(
 
       let value: number
       if (isElite) {
-        // Elite: foco quase total no score do próprio candidato.
         value = cand.score * w.score + newCoverage * w.cobertura - overlapPenalty * w.sobreposicao
       } else if (isMaximin) {
-        // Maximin: valoriza elevar o score mínimo do conjunto.
         const currentMin = chosen.length > 0 ? Math.min(...chosen.map((c) => c.score)) : 0
         const newMin = Math.min(currentMin, cand.score)
         value = newMin * w.score + newCoverage * w.cobertura - overlapPenalty * w.sobreposicao
@@ -1205,13 +1146,11 @@ export function optimizeFiveGamesV2(
 /* ============================================================
  * optimizeFiveGamesV3 — Otimizador de Cobertura Greedy (avançado)
  * ============================================================
- * Novo algoritmo de nível mundial para o Modo 5 Jogos:
  *  1. Gera todas as combinações de 5 a partir do grupo selecionado
  *     (quando viável) e pontua cada uma pelo score probabilístico.
  *  2. Seleciona o 1º jogo: maior score.
  *  3. Para jogos 2-5: seleciona o que maximiza
  *        score × 0.4 + cobertura_marginal × 0.6
- *     onde cobertura_marginal = nº de NOVOS pares/trios cobertos.
  *  4. Garante que cada novo jogo tenha ao menos 2 números diferentes
  *     dos anteriores.
  * ============================================================ */
@@ -1223,13 +1162,11 @@ export function optimizeFiveGamesV2(
 function paresEtriosDoJogo(jogo: number[]): Set<string> {
   const sorted = [...jogo].sort((a, b) => a - b)
   const set = new Set<string>()
-  // Pares
   for (let i = 0; i < sorted.length; i++) {
     for (let j = i + 1; j < sorted.length; j++) {
       set.add(`${sorted[i]}-${sorted[j]}`)
     }
   }
-  // Trios
   for (let i = 0; i < sorted.length; i++) {
     for (let j = i + 1; j < sorted.length; j++) {
       for (let l = j + 1; l < sorted.length; l++) {
@@ -1282,10 +1219,8 @@ export function optimizeFiveGamesV3(
   const totalSlots = FIVE_GAMES_COUNT * FIVE_GAMES_SIZE
   const k = FIVE_GAMES_SIZE
 
-  // Pesos por meta (mesma semântica de V2, aplicados no score base)
   const w = META_WEIGHTS[meta]
 
-  // 1. Gera candidatas
   let candidates: number[][]
   if (groupSize <= k) {
     candidates = [group]
@@ -1312,7 +1247,6 @@ export function optimizeFiveGamesV3(
     }
   }
 
-  // 2. Pontua cada candidata (score V2 com frequências históricas)
   const scored = candidates.map((c) => ({
     game: c,
     score: calculateGameScore(c, historicoFrequencias),
@@ -1323,13 +1257,10 @@ export function optimizeFiveGamesV3(
   const usadas = new Set<number>()
   const paresTriosCobertos = new Set<string>()
 
-  // Meta "Score Elite": prioriza jogos de score máximo (≥90%) mesmo
-  // sacrificando cobertura. Meta "Melhor Score": maximin (maximiza o
-  // score MÍNIMO entre os 5 jogos, não apenas a média).
   const isElite = meta === 'elite'
   const isMaximin = meta === 'score'
+  const isEvMaximo = meta === 'ev-maximo'
 
-  // 3. Seleção greedy
   while (chosen.length < FIVE_GAMES_COUNT && scored.length > 0) {
     let bestIdx = -1
     let bestValue = -Infinity
@@ -1339,7 +1270,13 @@ export function optimizeFiveGamesV3(
 
       if (chosen.length === 0) {
         // 1º jogo: maior score (ponderado pela meta)
-        const value = cand.score * w.score + dezenasNovas(cand.game, usadas) * w.cobertura
+        let value: number
+        if (isEvMaximo) {
+          const pop = estimatePopularityFactor(cand.game)
+          value = cand.score * 2.5 + dezenasNovas(cand.game, usadas) * 1.5 + (2 - pop) * 12
+        } else {
+          value = cand.score * w.score + dezenasNovas(cand.game, usadas) * w.cobertura
+        }
         if (value > bestValue) {
           bestValue = value
           bestIdx = i
@@ -1347,23 +1284,21 @@ export function optimizeFiveGamesV3(
         continue
       }
 
-      // Jogos 2-5: garante ao menos 2 dezenas diferentes das já usadas
-      // (exceto na meta Elite, que ignora cobertura para maximizar score)
       const novas = dezenasNovas(cand.game, usadas)
       if (!isElite && novas < 2 && groupSize > k) continue
 
       const margCobertura = coberturaMarginal(cand.game, paresTriosCobertos)
       let value: number
       if (isElite) {
-        // Elite: foco quase total no score; cobertura desprezível.
         value = cand.score * (w.score / 2) + margCobertura * (w.cobertura / 4)
+      } else if (isEvMaximo) {
+        const pop = estimatePopularityFactor(cand.game)
+        value = cand.score * 2.5 + margCobertura * 1.5 + (2 - pop) * 12
       } else if (isMaximin) {
-        // Maximin: valoriza elevar o score mínimo do conjunto.
         const currentMin = Math.min(...chosen.map((c) => c.score))
         const newMin = Math.min(currentMin, cand.score)
         value = newMin * 0.4 * (w.score / 2) + margCobertura * 0.6 * (w.cobertura / 4)
       } else {
-        // score × 0.4 + cobertura_marginal × 0.6 (ajustado pela meta)
         const pesoScore = 0.4 * (w.score / 2)
         const pesoCob = 0.6 * (w.cobertura / 4)
         value = cand.score * pesoScore + margCobertura * pesoCob
@@ -1374,8 +1309,6 @@ export function optimizeFiveGamesV3(
       }
     }
 
-    // Se nenhum candidato satisfaz a restrição de 2 dezenas novas,
-    // relaxa e pega o de maior score
     if (bestIdx === -1) {
       for (let i = 0; i < scored.length; i++) {
         const cand = scored[i]
@@ -1395,7 +1328,6 @@ export function optimizeFiveGamesV3(
     for (const pt of paresEtriosDoJogo(picked.game)) paresTriosCobertos.add(pt)
   }
 
-  // Preenche jogos faltantes (grupo muito pequeno)
   while (chosen.length < FIVE_GAMES_COUNT && chosen.length > 0) {
     chosen.push(chosen[0])
   }
@@ -1448,10 +1380,6 @@ export function recomputeFiveGamesResult(
 
 /* ============================================================
  * Probabilidade combinada de acerto — API legada (mantida)
- * ============================================================
- * Calcula a probabilidade de ao menos 1 dos jogos acertar 4 ou
- * mais dezenas (quadra+). Delega para o motor avançado
- * (Bonferroni 2ª ordem).
  * ============================================================ */
 export function probabilityAtLeastFourPlus(games: number[][]): number {
   if (!games || games.length === 0) return 0
@@ -1460,6 +1388,7 @@ export function probabilityAtLeastFourPlus(games: number[][]): number {
 
 /**
  * Exporta os 5 jogos otimizados para um arquivo .txt formatado.
+ * Inclui popularidade, EV por jogo e eficiência de Schönheim.
  */
 export function buildFiveGamesExportText(result: FiveGamesResult, selected: number[]): string {
   const now = new Date()
@@ -1469,12 +1398,21 @@ export function buildFiveGamesExportText(result: FiveGamesResult, selected: numb
   const hours = String(now.getHours()).padStart(2, '0')
   const minutes = String(now.getMinutes()).padStart(2, '0')
 
+  // Eficiência de Schönheim (cobertura t=2: garantir todos os pares)
+  const eficienciaSchonheim = coverageEfficiency(
+    result.groupSize,
+    result.games.length,
+    FIVE_GAMES_SIZE,
+    2,
+  )
+
   const header = [
     `# ==========================================================`,
     `# Otimizador Estratégico Mega-Sena — Modo 5 Jogos`,
     `# Data de Geração: ${day}/${month}/${year} às ${hours}:${minutes}`,
     `# Dezenas do Grupo (${selected.length}): ${selected.map(formatTwoDigits).join(', ')}`,
     `# Cobertura: ${result.coveragePercent}% | Cobertas: ${result.covered.length} | Fora: ${result.uncovered.length}`,
+    `# Eficiência de Cobertura (Schönheim, t=2): ${eficienciaSchonheim}% do limite teórico`,
     `# ==========================================================`,
     ``,
   ].join('\n')
@@ -1487,7 +1425,10 @@ export function buildFiveGamesExportText(result: FiveGamesResult, selected: numb
       const pQuadraUmEm = Number.isFinite(probs.umEmQuadra)
         ? `1 em ${formatNumberBR(Math.round(probs.umEmQuadra))}`
         : '—'
-      return `Jogo ${String(idx + 1).padStart(2, '0')}: ${formatGameString(game)} | Score: ${score}% (${label}) | P(≥Quadra): ${pQuadraUmEm}`
+      const pop = estimatePopularityFactor(game)
+      const popLabel = popularidadeLabel(pop)
+      const evReal = calculateRealEVJogo(game, PRIZE_SENA)
+      return `Jogo ${String(idx + 1).padStart(2, '0')}: ${formatGameString(game)} | Score: ${score}% (${label}) | P(≥Quadra): ${pQuadraUmEm} | Popularidade: ${popLabel} (${pop.toFixed(2)}) | EV Real: ${formatCurrencyBRL(evReal.ev)}`
     })
     .join('\n')
 
@@ -1496,7 +1437,6 @@ export function buildFiveGamesExportText(result: FiveGamesResult, selected: numb
       ? Math.round(result.scores.reduce((acc, s) => acc + s, 0) / result.scores.length)
       : 0
 
-  // Análise combinada
   const comb = calcularProbabilidadeCombinada(result.games)
   const evTotal = calcularEVConjunto(result.games)
   const combPct = (comb.peloMenosQuadra * 100).toFixed(4)
@@ -1506,7 +1446,8 @@ export function buildFiveGamesExportText(result: FiveGamesResult, selected: numb
     `# Score Médio dos 5 Jogos: ${avgScore}%`,
     `# Prob. combinada de ≥Quadra (Bonferroni 2ª ordem): ${combPct}%`,
     `# Valor Esperado (EV) total: ${formatCurrencyBRL(evTotal)} (custo: ${formatCurrencyBRL(result.games.length * PRICE_PER_GAME)})`,
-    `# Motor probabilístico: hipergeométrica multivariada, KS de uniformidade, gaps/autocorrelação, soma normal, entropia de Shannon, Bonferroni`,
+    `# Eficiência Schönheim (t=2): ${eficienciaSchonheim}% do limite teórico`,
+    `# Motor probabilístico v3: hipergeométrica, KS, gaps, soma normal, entropia, anti-popularidade, Bonferroni, Schönheim`,
   ].join('\n')
 
   return `${header}\n${body}\n${footer}\n`

@@ -20,6 +20,8 @@ import {
   SlidersHorizontal,
   Star,
   Flame,
+  Target,
+  TrendingUp,
 } from 'lucide-react'
 import { useMega } from '@/lib/MegaContext'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -33,11 +35,17 @@ import {
   formatNumberBR,
   formatGameString,
   calculateGameScore,
-  computeScoreV2,
+  computeScoreV3,
   formatScoreBreakdown,
+  coverageEfficiency,
+  calcularEV,
+  calcularEVConjunto,
+  calcularEVPorReal,
+  calcularProbabilidadeCombinada,
   SCORE_ELITE_THRESHOLD,
   getScoreColor,
 } from '@/lib/megaEngine'
+import { estimatePopularityFactor } from '@/lib/popularityModel'
 import { ScoreHistogram } from '@/components/ScoreHistogram'
 import { SimulacaoHistorica } from '@/components/SimulacaoHistorica'
 import { PrintableVersion, jogosComScore } from '@/components/PrintableVersion'
@@ -146,6 +154,48 @@ export default function Resultados() {
   const scoreFilteredCost = useMemo(() => {
     return scoreFilteredCombinations.length * PRICE_PER_GAME
   }, [scoreFilteredCombinations.length])
+
+  // === Métricas probabilísticas avançadas do motor v3 ===
+  // Eficiência de cobertura Schönheim (t=2: garantir todos os pares)
+  const schonheimEfficiency = useMemo(() => {
+    if (scoreFilteredCombinations.length === 0) return 0
+    return coverageEfficiency(selectedNumbers.length, scoreFilteredCombinations.length, 6, 2)
+  }, [selectedNumbers.length, scoreFilteredCombinations.length])
+
+  // Valor Esperado (EV) total do conjunto + EV por real
+  const evTotal = useMemo(() => {
+    if (scoreFilteredCombinations.length === 0) return 0
+    return calcularEVConjunto(scoreFilteredCombinations)
+  }, [scoreFilteredCombinations])
+
+  const evPorReal = useMemo(() => {
+    if (scoreFilteredCombinations.length === 0) return 0
+    return calcularEVPorReal(scoreFilteredCombinations)
+  }, [scoreFilteredCombinations])
+
+  // Probabilidade combinada (Bonferroni 2ª ordem) de ≥ Quadra
+  const probCombinada = useMemo(() => {
+    if (scoreFilteredCombinations.length === 0) return 0
+    return calcularProbabilidadeCombinada(scoreFilteredCombinations).peloMenosQuadra
+  }, [scoreFilteredCombinations])
+
+  // Cor da eficiência Schönheim (verde ≥60, âmbar ≥30, laranja/cinza abaixo)
+  const schonheimColorMeta = useMemo(() => {
+    if (schonheimEfficiency >= 60)
+      return {
+        text: 'text-emerald-400',
+        iconBg: 'bg-emerald-950/40 border-emerald-500/30 text-emerald-400',
+      }
+    if (schonheimEfficiency >= 30)
+      return {
+        text: 'text-amber-400',
+        iconBg: 'bg-amber-950/40 border-amber-500/30 text-amber-400',
+      }
+    return {
+      text: 'text-orange-400',
+      iconBg: 'bg-orange-950/40 border-orange-500/30 text-orange-400',
+    }
+  }, [schonheimEfficiency])
 
   // Ordem de exibição (geração ou por score)
   const orderedCombinations = useMemo(() => {
@@ -362,8 +412,8 @@ export default function Resultados() {
         </div>
       </section>
 
-      {/* Dashboard Metrics (5 Cards with staggered fade-in) */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      {/* Dashboard Metrics (8 Cards with staggered fade-in) */}
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Total Combinations */}
         <div
           className="surface-card rounded-2xl p-5 border border-[#262c34] relative overflow-hidden shadow-md animate-fade-in-up"
@@ -479,6 +529,81 @@ export default function Resultados() {
           <div className={`text-xs mt-1 font-semibold ${scoreColorMeta.textColor}`}>
             {scoreColorMeta.label}
           </div>
+        </div>
+
+        {/* Card 6: Eficiência de Cobertura (Schönheim) */}
+        <div
+          className="surface-card rounded-2xl p-5 border border-[#262c34] relative overflow-hidden shadow-md animate-fade-in-up"
+          style={{ animationDelay: '400ms' }}
+        >
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+              Eficiência Schönheim (t=2)
+            </span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center border cursor-help ${schonheimColorMeta.iconBg}`}
+                >
+                  <Target className="w-4 h-4" />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent
+                side="top"
+                className="bg-[#12161b] border-emerald-500/40 text-zinc-200 max-w-[280px] text-[11px] leading-relaxed shadow-[0_0_18px_rgba(16,185,129,0.25)]"
+              >
+                O limite de Schönheim define o número mínimo teórico de bilhetes para garantir
+                cobertura total de pares (t=2). A eficiência mede quão perto o conjunto está desse
+                limite.
+              </TooltipContent>
+            </Tooltip>
+          </div>
+          <div
+            className={`text-2xl sm:text-3xl font-extrabold tracking-tight ${schonheimColorMeta.text}`}
+          >
+            {schonheimEfficiency.toFixed(1)}%
+          </div>
+          <div className="text-xs text-zinc-400 mt-1">
+            Proximidade do limite teórico mínimo de cobertura
+          </div>
+        </div>
+
+        {/* Card 7: Valor Esperado (EV) */}
+        <div
+          className="surface-card rounded-2xl p-5 border border-[#262c34] relative overflow-hidden shadow-md animate-fade-in-up"
+          style={{ animationDelay: '480ms' }}
+        >
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+              Valor Esperado (EV)
+            </span>
+            <div className="w-8 h-8 rounded-lg bg-emerald-950/40 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+              <TrendingUp className="w-4 h-4 text-emerald-400" />
+            </div>
+          </div>
+          <div className="text-2xl sm:text-3xl font-extrabold text-emerald-400 tracking-tight">
+            {formatCurrencyBRL(evTotal)}
+          </div>
+          <div className="text-xs text-zinc-400 mt-1">EV por real: {evPorReal.toFixed(3)}</div>
+        </div>
+
+        {/* Card 8: Probabilidade Combinada (Bonferroni) */}
+        <div
+          className="surface-card rounded-2xl p-5 border border-[#262c34] relative overflow-hidden shadow-md animate-fade-in-up"
+          style={{ animationDelay: '560ms' }}
+        >
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+              Probabilidade Combinada
+            </span>
+            <div className="w-8 h-8 rounded-lg bg-emerald-950/40 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+              <BarChart3 className="w-4 h-4 text-emerald-400" />
+            </div>
+          </div>
+          <div className="text-2xl sm:text-3xl font-extrabold text-emerald-400 tracking-tight">
+            ≥ Quadra: {(probCombinada * 100).toFixed(4)}%
+          </div>
+          <div className="text-xs text-zinc-400 mt-1">Bonferroni 2ª ordem (inclusão-exclusão)</div>
         </div>
       </section>
 
@@ -756,9 +881,11 @@ export default function Resultados() {
 const GameScoreBar: React.FC<{ game: number[] }> = ({ game }) => {
   const score = calculateGameScore(game)
   const { textColor, bgClass, label } = getScoreColor(score)
-  const breakdown = computeScoreV2(game)
+  const breakdown = computeScoreV3(game)
   const breakdownStr = formatScoreBreakdown(breakdown)
   const isElite = score >= SCORE_ELITE_THRESHOLD
+  const evJogo = calcularEV(game)
+  const popularidade = estimatePopularityFactor(game)
 
   return (
     <div className="mt-2 pt-2 border-t border-[#262c34]/60 space-y-1">
@@ -782,10 +909,11 @@ const GameScoreBar: React.FC<{ game: number[] }> = ({ game }) => {
             side="top"
             className="bg-[#12161b] border-emerald-500/40 text-zinc-200 max-w-[280px] text-[11px] leading-relaxed shadow-[0_0_18px_rgba(16,185,129,0.25)]"
           >
-            <div className="font-semibold text-emerald-400 mb-1">Breakdown do Score</div>
+            <div className="font-semibold text-emerald-400 mb-1">Breakdown do Score (v3)</div>
             <div className="font-mono text-[10px]">{breakdownStr}</div>
             <div className="text-[10px] text-zinc-400 mt-1">
-              A) Hipergeométrica · B) Uniformidade KS · C) Gaps · D) Soma Normal · E) Entropia
+              A) Hipergeométrica · B) Uniformidade KS · C) Gaps · D) Soma Normal · E) Entropia · F)
+              Anti-Popularidade
             </div>
           </TooltipContent>
         </Tooltip>
@@ -804,6 +932,16 @@ const GameScoreBar: React.FC<{ game: number[] }> = ({ game }) => {
             Alta Performance
           </span>
         )}
+      </div>
+      {/* Linha sutil: EV por jogo + Popularidade */}
+      <div className="text-[10px] text-zinc-500 flex items-center gap-1.5">
+        <span>
+          EV: <span className="text-zinc-400">{formatCurrencyBRL(evJogo)}</span>
+        </span>
+        <span className="text-zinc-600">•</span>
+        <span>
+          Popularidade: <span className="text-zinc-400">{popularidade.toFixed(1)}</span>
+        </span>
       </div>
       <GameScoreRadar game={game} />
     </div>
