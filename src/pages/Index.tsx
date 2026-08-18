@@ -531,7 +531,13 @@ export default function Index() {
           {isCincoJogos && liveResult && <SimulacaoHistorica jogos={liveResult.games} conjunto />}
           {isCincoJogos && liveResult && (
             <>
-              <ComparacaoConcurso jogos={liveResult.games} />
+              <ComparacaoConcurso
+                jogos={liveResult.games}
+                titulo="Conferir com Sorteio"
+                subtitulo="Digite as 6 dezenas sorteadas para ver quantos acertos cada jogo teria"
+                botaoLabel="Conferir"
+                permitirBuscaConcurso={false}
+              />
               <div className="flex justify-center sm:justify-start">
                 <PrintableVersion jogos={jogosComScore(liveResult.games)} modo="Modo 5 Jogos" />
               </div>
