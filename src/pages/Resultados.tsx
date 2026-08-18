@@ -18,8 +18,11 @@ import {
   ArrowUpDown,
   BarChart3,
   SlidersHorizontal,
+  Star,
+  Flame,
 } from 'lucide-react'
 import { useMega } from '@/lib/MegaContext'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   FilterOptions,
   PRICE_PER_GAME,
@@ -30,6 +33,9 @@ import {
   formatNumberBR,
   formatGameString,
   calculateGameScore,
+  computeScoreV2,
+  formatScoreBreakdown,
+  SCORE_ELITE_THRESHOLD,
   getScoreColor,
 } from '@/lib/megaEngine'
 import { ScoreHistogram } from '@/components/ScoreHistogram'
@@ -107,6 +113,13 @@ export default function Resultados() {
     if (minScore <= 0) return filteredCombinations
     return filteredCombinations.filter((g) => calculateGameScore(g) >= minScore)
   }, [filteredCombinations, minScore])
+
+  // Contagem de jogos com Score Elite (≥ 90%) — para o banner no topo
+  const eliteCount = useMemo(() => {
+    if (scoreFilteredCombinations.length === 0) return 0
+    return scoreFilteredCombinations.filter((g) => calculateGameScore(g) >= SCORE_ELITE_THRESHOLD)
+      .length
+  }, [scoreFilteredCombinations])
 
   // Métricas dinâmicas conforme o filtro de score
   const scoreFilteredEconomy = useMemo(() => {
@@ -470,6 +483,36 @@ export default function Resultados() {
         <ComparacaoConcurso jogos={scoreFilteredCombinations} />
       )}
 
+      {/* Banner de jogos com Score Elite (≥ 90%) */}
+      {eliteCount > 0 && (
+        <section className="rounded-2xl p-4 border border-emerald-500/50 bg-emerald-950/30 shadow-[0_0_18px_rgba(16,185,129,0.2)] flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-500/50 flex items-center justify-center text-emerald-300 flex-shrink-0">
+              <Flame className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="text-sm font-extrabold text-emerald-300 flex items-center gap-1.5">
+                {formatNumberBR(eliteCount)} jogo{eliteCount > 1 ? 's' : ''} com Score Elite
+                <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-200">
+                  <Star className="w-2.5 h-2.5 fill-emerald-300" />≥ 90%
+                </span>
+              </div>
+              <p className="text-[11px] text-emerald-200/70 mt-0.5">
+                Jogos com alta performance no motor probabilístico avançado.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setMinScore(SCORE_ELITE_THRESHOLD)}
+            className="self-start sm:self-auto px-3 py-1.5 rounded-lg text-xs font-bold text-white emerald-gradient border border-emerald-300/50 hover:translate-y-[-1px] hover:shadow-[0_0_14px_rgba(16,185,129,0.5)] transition-all whitespace-nowrap"
+            title={`Filtrar apenas jogos com score ≥ ${SCORE_ELITE_THRESHOLD}%`}
+          >
+            Ver somente Elite
+          </button>
+        </section>
+      )}
+
       {/* Action Header: Games Title + Export Button */}
       <section className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#262c34] pb-4">
         <div className="flex items-center gap-2.5">
@@ -571,8 +614,22 @@ export default function Resultados() {
               return (
                 <div
                   key={globalIndex}
-                  className="surface-card rounded-xl p-3.5 border border-[#262c34] hover:border-emerald-500/50 hover:shadow-[0_4px_20px_rgba(16,185,129,0.15)] transition-all group relative flex flex-col justify-between"
+                  className={`surface-card rounded-xl p-3.5 border transition-all group relative flex flex-col justify-between ${
+                    calculateGameScore(game) >= SCORE_ELITE_THRESHOLD
+                      ? 'border-emerald-500/60 high-score-glow'
+                      : 'border-[#262c34] hover:border-emerald-500/50 hover:shadow-[0_4px_20px_rgba(16,185,129,0.15)]'
+                  }`}
                 >
+                  {/* Badge "Score Elite" no canto do card (score ≥ 90%) */}
+                  {calculateGameScore(game) >= SCORE_ELITE_THRESHOLD && (
+                    <span
+                      className="absolute -top-2 -right-2 z-10 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold text-white emerald-gradient border border-emerald-300/50 shadow-[0_0_10px_rgba(16,185,129,0.6)] whitespace-nowrap"
+                      title="Jogo com score ≥ 90% — Score Elite"
+                    >
+                      <Star className="w-3 h-3 fill-white" />
+                      Alta Performance
+                    </span>
+                  )}
                   {/* Game Number & Copy button */}
                   <div className="flex items-center justify-between mb-2.5">
                     <span className="text-[11px] font-bold text-zinc-400 flex items-center gap-1">
@@ -679,6 +736,9 @@ export default function Resultados() {
 const GameScoreBar: React.FC<{ game: number[] }> = ({ game }) => {
   const score = calculateGameScore(game)
   const { textColor, bgClass, label } = getScoreColor(score)
+  const breakdown = computeScoreV2(game)
+  const breakdownStr = formatScoreBreakdown(breakdown)
+  const isElite = score >= SCORE_ELITE_THRESHOLD
 
   return (
     <div className="mt-2 pt-2 border-t border-[#262c34]/60 space-y-1">
@@ -686,7 +746,29 @@ const GameScoreBar: React.FC<{ game: number[] }> = ({ game }) => {
         <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
           Score de Acertividade
         </span>
-        <span className={`text-[11px] font-extrabold ${textColor}`}>{score}%</span>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              className={`text-[11px] font-extrabold ${textColor} cursor-help underline decoration-dotted underline-offset-2 ${
+                isElite ? 'animate-pulse' : ''
+              }`}
+              title="Passe o mouse para ver o breakdown do score"
+            >
+              {score}%
+            </button>
+          </TooltipTrigger>
+          <TooltipContent
+            side="top"
+            className="bg-[#12161b] border-emerald-500/40 text-zinc-200 max-w-[280px] text-[11px] leading-relaxed shadow-[0_0_18px_rgba(16,185,129,0.25)]"
+          >
+            <div className="font-semibold text-emerald-400 mb-1">Breakdown do Score</div>
+            <div className="font-mono text-[10px]">{breakdownStr}</div>
+            <div className="text-[10px] text-zinc-400 mt-1">
+              A) Hipergeométrica · B) Uniformidade KS · C) Gaps · D) Soma Normal · E) Entropia
+            </div>
+          </TooltipContent>
+        </Tooltip>
       </div>
       <div className="h-1 w-full rounded-full bg-[#1a1f2b] overflow-hidden">
         <div
@@ -694,7 +776,15 @@ const GameScoreBar: React.FC<{ game: number[] }> = ({ game }) => {
           style={{ width: `${score}%` }}
         />
       </div>
-      <div className={`text-[10px] font-bold ${textColor}`}>{label}</div>
+      <div className={`text-[10px] font-bold ${textColor}`}>
+        {label}
+        {isElite && (
+          <span className="ml-1.5 inline-flex items-center gap-0.5 text-emerald-400">
+            <Star className="w-2.5 h-2.5 fill-emerald-400" />
+            Alta Performance
+          </span>
+        )}
+      </div>
     </div>
   )
 }

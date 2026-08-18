@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Filter,
@@ -21,19 +21,37 @@ import {
   AlertCircle,
   BarChart3,
   PieChart,
+  Flame,
+  Star,
+  TrendingUp,
+  Gauge,
 } from 'lucide-react'
 import { useMega, AppMode } from '@/lib/MegaContext'
 import {
   formatTwoDigits,
   formatGameString,
+  formatCurrencyBRL,
+  formatNumberBR,
   optimizeFiveGamesV2,
+  optimizeFiveGamesV3,
   buildFiveGamesExportText,
   calculateGameScore,
+  computeScoreV2,
+  formatScoreBreakdown,
+  SCORE_ELITE_THRESHOLD,
   getScoreColor,
   probabilityAtLeastFourPlus,
   recomputeFiveGamesResult,
+  calcularFrequencias,
+  frequenciaMediaGlobal,
+  calcularProbabilidadesJogo,
+  calcularProbabilidadeCombinada,
+  calcularEVConjunto,
+  calcularEVPorReal,
+  probExataMegaSena,
   FIVE_GAMES_MIN_SELECTION,
   FIVE_GAMES_MAX_SELECTION,
+  PRICE_PER_GAME,
   FiveGamesResult,
   OptimizationMeta,
   META_WEIGHTS,
@@ -43,6 +61,9 @@ import { ToggleSwitch } from '@/components/ToggleSwitch'
 import { SimulacaoHistorica } from '@/components/SimulacaoHistorica'
 import { PrintableVersion, jogosComScore } from '@/components/PrintableVersion'
 import { ComparacaoConcurso } from '@/components/ComparacaoConcurso'
+import { CONCURSOS_HISTORICOS } from '@/data/concursosHistoricos'
+import { useToast } from '@/hooks/use-toast'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 export default function Index() {
   const navigate = useNavigate()
@@ -57,6 +78,7 @@ export default function Index() {
     maxSelection,
     resetAll,
   } = useMega()
+  const { toast } = useToast()
 
   const isCincoJogos = mode === 'cinco-jogos'
 
@@ -68,6 +90,12 @@ export default function Index() {
   const [meta, setMeta] = useState<OptimizationMeta>(DEFAULT_META)
 
   const count = selectedNumbers.length
+
+  // === Frequência Histórica (heatmap no grid de seleção) ===
+  // Usa a base estática de concursos (a mesma do SimulacaoHistorica).
+  const freqMap = useMemo(() => calcularFrequencias(CONCURSOS_HISTORICOS), [])
+  const freqMedia = useMemo(() => frequenciaMediaGlobal(freqMap), [freqMap])
+  const totalConcursos = CONCURSOS_HISTORICOS.length
 
   // Resultado "ao vivo" — recalculado a cada edição manual (drag-and-drop).
   // Quando não há edições, equivale ao resultado original otimizado.
@@ -123,10 +151,18 @@ export default function Index() {
     setIsLoading(true)
     setExported(false)
     setTimeout(() => {
-      const result = optimizeFiveGamesV2(selectedNumbers, meta)
+      const result = optimizeFiveGamesV3(selectedNumbers, meta, freqMap)
       setFiveGamesResult(result)
       setEditableGames(result.games.map((g) => [...g]))
       setIsLoading(false)
+      // Toast de alerta de Score Elite (score ≥ 90%)
+      const altaProb = result.scores.filter((s) => s >= SCORE_ELITE_THRESHOLD).length
+      if (altaProb > 0) {
+        toast({
+          title: `${altaProb} jogo${altaProb > 1 ? 's' : ''} com Score Elite (≥90%) 🔥`,
+          description: `${altaProb} jogo${altaProb > 1 ? 's atingiram' : ' atingiu'} score ≥ ${SCORE_ELITE_THRESHOLD}% no motor probabilístico avançado.`,
+        })
+      }
     }, 350)
   }
 
@@ -137,7 +173,7 @@ export default function Index() {
     if (fiveGamesResult && count >= FIVE_GAMES_MIN_SELECTION && count <= FIVE_GAMES_MAX_SELECTION) {
       setIsLoading(true)
       setTimeout(() => {
-        const result = optimizeFiveGamesV2(selectedNumbers, next)
+        const result = optimizeFiveGamesV3(selectedNumbers, next, freqMap)
         setFiveGamesResult(result)
         setEditableGames(result.games.map((g) => [...g]))
         setIsLoading(false)
@@ -974,8 +1010,14 @@ const OptimizationMetaControl: React.FC<{
     {
       key: 'score',
       label: 'Melhor Score',
-      desc: 'Prioriza o score probabilístico',
+      desc: 'Maximiza o score mínimo entre os 5 jogos (maximin)',
       icon: <BarChart3 className="w-3.5 h-3.5" />,
+    },
+    {
+      key: 'elite',
+      label: 'Score Elite',
+      desc: 'Prioriza jogos com score máximo (≥90%), sacrificando cobertura',
+      icon: <Star className="w-3.5 h-3.5" />,
     },
   ]
 
@@ -985,7 +1027,7 @@ const OptimizationMetaControl: React.FC<{
         <Target className="w-3.5 h-3.5 text-emerald-400" />
         <span className="text-xs font-semibold text-white">Meta de Otimização</span>
       </div>
-      <div className="grid grid-cols-3 gap-1.5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
         {opcoes.map((opt) => {
           const active = meta === opt.key
           return (
@@ -1010,11 +1052,13 @@ const OptimizationMetaControl: React.FC<{
         })}
       </div>
       <p className="text-[10px] text-zinc-500 mt-2 leading-relaxed">
-        {META_WEIGHTS[meta].score === 5
-          ? 'Pesos: score ×5 · cobertura ×1 · sobreposição ×1'
-          : META_WEIGHTS[meta].cobertura === 6
-            ? 'Pesos: score ×1 · cobertura ×6 · sobreposição ×2'
-            : 'Pesos: score ×2 · cobertura ×4 · sobreposição ×1'}
+        {meta === 'elite'
+          ? 'Pesos: score ×9 · cobertura ×0.2 · sobreposição ×0.5 — foco total no score'
+          : META_WEIGHTS[meta].score === 5
+            ? 'Pesos: score ×5 · cobertura ×1 · sobreposição ×1 — maximiza o score mínimo (maximin)'
+            : META_WEIGHTS[meta].cobertura === 6
+              ? 'Pesos: score ×1 · cobertura ×6 · sobreposição ×2'
+              : 'Pesos: score ×2 · cobertura ×4 · sobreposição ×1'}
       </p>
     </div>
   )
@@ -1157,7 +1201,7 @@ const FiveGamesResultSection: React.FC<{
             </div>
           </div>
         </div>
-        <AverageScoreCard scores={result.scores} highlight={meta === 'score'} />
+        <AverageScoreCard scores={result.scores} highlight={meta === 'score' || meta === 'elite'} />
       </div>
 
       {/* Cards dos 5 jogos — chips arrastáveis */}
@@ -1179,8 +1223,18 @@ const FiveGamesResultSection: React.FC<{
                   : isDragOver
                     ? 'border-dashed border-emerald-400 bg-emerald-950/20'
                     : 'border-[#262c34] hover:border-emerald-500/50 hover:shadow-[0_4px_20px_rgba(16,185,129,0.15)]'
-              }`}
+              } ${calculateGameScore(game) >= SCORE_ELITE_THRESHOLD ? 'high-score-glow' : ''}`}
             >
+              {/* Badge "Score Elite" no canto do card (score ≥ 90%) */}
+              {calculateGameScore(game) >= SCORE_ELITE_THRESHOLD && (
+                <span
+                  className="absolute -top-2 -right-2 z-10 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold text-white emerald-gradient border border-emerald-300/50 shadow-[0_0_10px_rgba(16,185,129,0.6)] whitespace-nowrap"
+                  title="Jogo com score ≥ 90% — Score Elite"
+                >
+                  <Flame className="w-3 h-3" />
+                  Score Elite
+                </span>
+              )}
               {/* Cabeçalho do bilhete */}
               <div className="flex items-center justify-between mb-3">
                 <span className="text-[11px] font-bold text-zinc-400 flex items-center gap-1">
@@ -1282,6 +1336,9 @@ const FiveGamesResultSection: React.FC<{
 const FiveGameScoreBar: React.FC<{ game: number[] }> = ({ game }) => {
   const score = calculateGameScore(game)
   const { textColor, bgClass, label } = getScoreColor(score)
+  const breakdown = computeScoreV2(game)
+  const breakdownStr = formatScoreBreakdown(breakdown)
+  const isElite = score >= SCORE_ELITE_THRESHOLD
 
   return (
     <div className="mt-2 pt-2 border-t border-[#262c34]/60 space-y-1">
@@ -1289,7 +1346,29 @@ const FiveGameScoreBar: React.FC<{ game: number[] }> = ({ game }) => {
         <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
           Score de Acertividade
         </span>
-        <span className={`text-[11px] font-extrabold ${textColor}`}>{score}%</span>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              className={`text-[11px] font-extrabold ${textColor} cursor-help underline decoration-dotted underline-offset-2 ${
+                isElite ? 'animate-pulse' : ''
+              }`}
+              title="Passe o mouse para ver o breakdown do score"
+            >
+              {score}%
+            </button>
+          </TooltipTrigger>
+          <TooltipContent
+            side="top"
+            className="bg-[#12161b] border-emerald-500/40 text-zinc-200 max-w-[280px] text-[11px] leading-relaxed shadow-[0_0_18px_rgba(16,185,129,0.25)]"
+          >
+            <div className="font-semibold text-emerald-400 mb-1">Breakdown do Score</div>
+            <div className="font-mono text-[10px]">{breakdownStr}</div>
+            <div className="text-[10px] text-zinc-400 mt-1">
+              A) Hipergeométrica · B) Uniformidade KS · C) Gaps · D) Soma Normal · E) Entropia
+            </div>
+          </TooltipContent>
+        </Tooltip>
       </div>
       <div className="h-1 w-full rounded-full bg-[#1a1f2b] overflow-hidden">
         <div
@@ -1297,7 +1376,15 @@ const FiveGameScoreBar: React.FC<{ game: number[] }> = ({ game }) => {
           style={{ width: `${score}%` }}
         />
       </div>
-      <div className={`text-[10px] font-bold ${textColor}`}>{label}</div>
+      <div className={`text-[10px] font-bold ${textColor}`}>
+        {label}
+        {isElite && (
+          <span className="ml-1.5 inline-flex items-center gap-0.5 text-emerald-400">
+            <Star className="w-2.5 h-2.5 fill-emerald-400" />
+            Alta Performance
+          </span>
+        )}
+      </div>
     </div>
   )
 }

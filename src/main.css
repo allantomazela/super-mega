@@ -198,4 +198,39 @@
   .mega-score-slider::-moz-range-track {
     background: transparent;
   }
+
+  /* === Alerta de Score ≥ 90% — glow pulsante verde-esmeralda === */
+  @keyframes high-score-pulse {
+    0%,
+    100% {
+      box-shadow:
+        0 0 0 0 rgba(16, 185, 129, 0.55),
+        0 0 14px rgba(16, 185, 129, 0.4);
+      border-color: rgba(16, 185, 129, 0.6);
+    }
+    50% {
+      box-shadow:
+        0 0 0 4px rgba(16, 185, 129, 0.18),
+        0 0 28px rgba(16, 185, 129, 0.7);
+      border-color: rgba(16, 185, 129, 0.9);
+    }
+  }
+
+  .high-score-glow {
+    animation: high-score-pulse 2s ease-in-out infinite;
+    border-color: rgba(16, 185, 129, 0.7) !important;
+  }
+
+  /* Indicador sutil de dezena "quente" (acima da média histórica) */
+  .number-hot-dot::after {
+    content: '';
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 5px;
+    height: 5px;
+    border-radius: 9999px;
+    background: #34d399;
+    box-shadow: 0 0 5px rgba(52, 211, 153, 0.7);
+  }
 }
