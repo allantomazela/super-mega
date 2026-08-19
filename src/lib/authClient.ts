@@ -16,23 +16,23 @@ export const authClient = createAuthClient(NEON_AUTH_URL, {
   }),
 })
 
+/** Destino após o Google: sempre a pasta do GitHub Pages (/super-mega/). */
 export function appCallbackUrl(): string {
   const base = import.meta.env.BASE_URL || '/'
   const origin = window.location.origin
-  const root =
-    base === '/' ? `${origin}/` : `${origin}${base.endsWith('/') ? base : `${base}/`}`
-  return `${root}#/`
+  if (base === '/') return `${origin}/`
+  return `${origin}${base.endsWith('/') ? base : `${base}/`}`
 }
 
-/** Lê e remove o verifier da URL antes do get-session (query extra gera HTTP 400). */
-export const SESSION_VERIFIER_HEADER = 'neon_auth_session_verifier'
-
-export function consumeSessionVerifierFromUrl(): string | null {
+/**
+ * Remove o verifier da URL imediatamente.
+ * Não pode ir no header (CORS bloqueia) nem na query do get-session (HTTP 400).
+ */
+export function consumeSessionVerifierFromUrl(): void {
+  if (typeof window === 'undefined') return
   const params = new URLSearchParams(window.location.search)
-  const verifier = params.get(SESSION_VERIFIER_PARAM)
-  if (!verifier) return null
+  if (!params.has(SESSION_VERIFIER_PARAM)) return
   params.delete(SESSION_VERIFIER_PARAM)
   const next = `${window.location.pathname}${params.toString() ? `?${params}` : ''}${window.location.hash}`
   window.history.replaceState({}, '', next)
-  return verifier
 }

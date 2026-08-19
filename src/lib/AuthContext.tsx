@@ -1,10 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import {
-  authClient,
-  appCallbackUrl,
-  consumeSessionVerifierFromUrl,
-  SESSION_VERIFIER_HEADER,
-} from '@/lib/authClient'
+import { authClient, appCallbackUrl, consumeSessionVerifierFromUrl } from '@/lib/authClient'
 
 export interface AuthUser {
   id: string
@@ -27,14 +22,11 @@ type SessionPayload = {
   session?: { id: string }
 }
 
-async function buscarSessao(verifier?: string | null): Promise<AuthUser | null> {
+async function buscarSessao(): Promise<AuthUser | null> {
   try {
-    const result = (await authClient.getSession({
-      query: {},
-      fetchOptions: verifier
-        ? { headers: { [SESSION_VERIFIER_HEADER]: verifier } }
-        : {},
-    })) as { data: SessionPayload | null }
+    const result = (await authClient.getSession({ query: {} })) as {
+      data: SessionPayload | null
+    }
     return result.data?.user ?? null
   } catch {
     return null
@@ -47,11 +39,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let ativo = true
+    consumeSessionVerifierFromUrl()
     void (async () => {
       try {
-        const verifier = consumeSessionVerifierFromUrl()
         for (let i = 0; i < 4; i++) {
-          const atual = await buscarSessao(verifier)
+          const atual = await buscarSessao()
           if (!ativo) return
           setUser(atual)
           if (atual) break
