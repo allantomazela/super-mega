@@ -548,6 +548,19 @@ export function formatGameString(game: number[]): string {
   return game.map(formatTwoDigits).join(' - ')
 }
 
+/** Formato TXT/Caixa: 01,25,36,38,52,56,57 */
+export function formatGameCsv(game: number[]): string {
+  return [...game]
+    .sort((a, b) => a - b)
+    .map(formatTwoDigits)
+    .join(',')
+}
+
+/** Um jogo por linha, pronto para preencher volante ou colar. */
+export function buildJogosTxtCaixa(games: number[][]): string {
+  return games.map(formatGameCsv).join('\n') + '\n'
+}
+
 /** Format currency in BRL (R$ 1.500,00). */
 export function formatCurrencyBRL(val: number): string {
   return new Intl.NumberFormat('pt-BR', {

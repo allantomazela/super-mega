@@ -33,7 +33,8 @@ import {
   formatTwoDigits,
   formatCurrencyBRL,
   formatNumberBR,
-  formatGameString,
+  formatGameCsv,
+  buildJogosTxtCaixa,
   calculateGameScore,
   computeScoreV3,
   formatScoreBreakdown,
@@ -50,6 +51,7 @@ import { combinacoesSimples, precoOficialCaixa } from '@/lib/caixaOficial'
 import { ScoreHistogram } from '@/components/ScoreHistogram'
 import { SimulacaoHistorica } from '@/components/SimulacaoHistorica'
 import { PrintableVersion, jogosComScore } from '@/components/PrintableVersion'
+import { VolanteOficial } from '@/components/VolanteOficial'
 import { ComparacaoConcurso, ConferenciaCallbackPayload } from '@/components/ComparacaoConcurso'
 import { GameScoreRadar } from '@/components/RadarChart'
 import { HistoricoConferencias } from '@/components/HistoricoConferencias'
@@ -268,9 +270,7 @@ export default function Resultados() {
       ``,
     ].join('\n')
 
-    const body = scoreFilteredCombinations
-      .map((game, idx) => `Jogo ${String(idx + 1).padStart(4, '0')}: ${formatGameString(game)}`)
-      .join('\n')
+    const body = buildJogosTxtCaixa(scoreFilteredCombinations).trim()
 
     const fileContent = `${header}\n${body}\n`
 
@@ -299,7 +299,7 @@ export default function Resultados() {
   }, [showToast])
 
   const copyGameToClipboard = (game: number[], index: number) => {
-    navigator.clipboard.writeText(formatGameString(game))
+    navigator.clipboard.writeText(formatGameCsv(game))
     setCopiedIndex(index)
     setTimeout(() => setCopiedIndex(null), 1500)
   }
@@ -708,6 +708,7 @@ export default function Resultados() {
               jogos={jogosComScore(scoreFilteredCombinations)}
               modo="Modo Desdobramento"
             />
+            <VolanteOficial jogos={scoreFilteredCombinations} />
             <button
               type="button"
               onClick={handleExportTxt}

@@ -28,11 +28,11 @@ import {
 import { useMega, AppMode } from '@/lib/MegaContext'
 import {
   formatTwoDigits,
-  formatGameString,
+  formatGameCsv,
+  buildJogosTxtCaixa,
   formatCurrencyBRL,
   formatNumberBR,
   optimizeFiveGamesV3,
-  buildFiveGamesExportText,
   calculateGameScore,
   computeScoreV3,
   formatScoreBreakdown,
@@ -69,6 +69,7 @@ import { useHistoricoConferencias } from '@/hooks/useHistoricoConferencias'
 import { TorneioMode } from '@/components/TorneioMode'
 import { FechamentoPanel } from '@/components/FechamentoPanel'
 import { ModeGuide } from '@/components/ModeGuide'
+import { VolanteOficial } from '@/components/VolanteOficial'
 import { UltimoSorteio } from '@/components/UltimoSorteio'
 import { FechamentoJogos } from '@/components/FechamentoJogos'
 import { useConcursos } from '@/hooks/useConcursos'
@@ -239,7 +240,7 @@ export default function Index() {
 
   const handleExportFiveGames = () => {
     if (!liveResult) return
-    const content = buildFiveGamesExportText(liveResult, selectedNumbers)
+    const content = buildJogosTxtCaixa(liveResult.games)
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
@@ -258,7 +259,7 @@ export default function Index() {
   }
 
   const copyGameToClipboard = (game: number[], index: number) => {
-    navigator.clipboard.writeText(formatGameString(game))
+    navigator.clipboard.writeText(formatGameCsv(game))
     setCopiedIndex(index)
     setTimeout(() => setCopiedIndex(null), 1500)
   }
@@ -1140,6 +1141,7 @@ const FiveGamesResultSection: React.FC<{
             <RotateCcw className="w-4 h-4 text-emerald-400" />
             <span>Resetar Jogos</span>
           </button>
+          <VolanteOficial jogos={editableGames} />
           <button
             type="button"
             onClick={onExport}
@@ -1301,7 +1303,7 @@ const FiveGamesResultSection: React.FC<{
 
               {/* String formatada */}
               <div className="mt-3 pt-2 border-t border-[#262c34]/60 text-[11px] text-zinc-400 font-mono text-center tracking-tight">
-                {formatGameString(game)}
+                {formatGameCsv(game)}
               </div>
 
               {/* Score de Acertividade */}

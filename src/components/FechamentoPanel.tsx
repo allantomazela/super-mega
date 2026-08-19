@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Grid3x3, Download, ShieldCheck, ChevronDown, ChevronUp } from 'lucide-react'
 import { aplicarFechamentoL10, estatisticaFechamentoL10, validarMatrizL10 } from '@/lib/coveringDesign'
 import { PRECO_SIMPLES_CAIXA, TABELA_OFICIAL_MEGA } from '@/lib/caixaOficial'
-import { formatTwoDigits, formatGameString, formatCurrencyBRL } from '@/lib/megaEngine'
+import { formatTwoDigits, formatCurrencyBRL, buildJogosTxtCaixa } from '@/lib/megaEngine'
 import { PrintableVersion, jogosComScore } from '@/components/PrintableVersion'
 
 interface FechamentoPanelProps {
@@ -18,15 +18,7 @@ export function FechamentoPanel({ dezenas }: FechamentoPanelProps) {
   const [tabelaAberta, setTabelaAberta] = useState(false)
 
   function exportar() {
-    const linhas = [
-      'Fechamento L(10, 6, 6, 5) — garantia de Quina se as 6 sorteadas estiverem nas 10',
-      `Dezenas: ${ordenadas.map(formatTwoDigits).join(' - ')}`,
-      '',
-      ...jogos.map((j, i) => `${formatTwoDigits(i + 1)}  ${formatGameString(j)}`),
-      '',
-      `Custo: ${formatCurrencyBRL(stats.custoFechamento)} (14 × ${formatCurrencyBRL(PRECO_SIMPLES_CAIXA)})`,
-    ]
-    const blob = new Blob([linhas.join('\n')], { type: 'text/plain;charset=utf-8' })
+    const blob = new Blob([buildJogosTxtCaixa(jogos)], { type: 'text/plain;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
