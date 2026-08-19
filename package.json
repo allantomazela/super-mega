@@ -28,6 +28,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
+    "@neondatabase/auth": "0.5.0-beta",
     "@neondatabase/neon-js": "0.7.0-beta",
     "@neondatabase/serverless": "^1.1.0",
     "@radix-ui/react-accordion": "^1.2.14",

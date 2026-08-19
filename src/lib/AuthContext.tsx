@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import { authClient, appCallbackUrl } from '@/lib/authClient'
+import { authClient, appCallbackUrl, consumeSessionVerifierFromUrl } from '@/lib/authClient'
 
 export interface AuthUser {
   id: string
@@ -30,15 +30,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let ativo = true
     void (async () => {
       try {
-        for (let i = 0; i < 4; i++) {
+        for (let i = 0; i < 6; i++) {
           const result = (await authClient.getSession({ query: {} })) as {
             data: SessionPayload | null
           }
           if (!ativo) return
           const atual = result.data?.user ?? null
           setUser(atual)
-          if (atual) break
-          await new Promise((resolve) => setTimeout(resolve, 250))
+          if (atual) {
+            consumeSessionVerifierFromUrl()
+            break
+          }
+          await new Promise((resolve) => setTimeout(resolve, 300))
         }
       } finally {
         if (ativo) setLoading(false)
