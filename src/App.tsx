@@ -6,25 +6,33 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import Index from './pages/Index'
 import Resultados from './pages/Resultados'
 import NotFound from './pages/NotFound'
+import Login from './pages/Login'
 import Layout from './components/Layout'
+import { RequireAuth } from './components/RequireAuth'
 import { MegaProvider } from './lib/MegaContext'
+import { AuthProvider } from './lib/AuthContext'
 
 const basename = import.meta.env.BASE_URL.replace(/\/$/, '')
 
 const App = () => (
   <BrowserRouter basename={basename || undefined}>
     <TooltipProvider>
-      <MegaProvider>
-        <Toaster />
-        <Sonner />
-        <Routes>
-          <Route element={<Layout />}>
-            <Route path="/" element={<Index />} />
-            <Route path="/resultados" element={<Resultados />} />
-          </Route>
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </MegaProvider>
+      <AuthProvider>
+        <MegaProvider>
+          <Toaster />
+          <Sonner />
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route element={<RequireAuth />}>
+              <Route element={<Layout />}>
+                <Route path="/" element={<Index />} />
+                <Route path="/resultados" element={<Resultados />} />
+              </Route>
+            </Route>
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </MegaProvider>
+      </AuthProvider>
     </TooltipProvider>
   </BrowserRouter>
 )

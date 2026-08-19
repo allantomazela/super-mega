@@ -1,6 +1,7 @@
 import { Outlet, useLocation, Link } from 'react-router-dom'
-import { Clover, Award } from 'lucide-react'
+import { Award, LogOut } from 'lucide-react'
 import { useMega, MODE_LABELS } from '@/lib/MegaContext'
+import { useAuth } from '@/lib/AuthContext'
 
 export default function Layout() {
   const location = useLocation()
@@ -8,6 +9,7 @@ export default function Layout() {
   const currentYear = new Date().getFullYear()
   const { mode } = useMega()
   const modeLabel = MODE_LABELS[mode]
+  const { user, signOut } = useAuth()
 
   return (
     <div className="flex flex-col min-h-screen bg-[#0d0f12] text-foreground">
@@ -20,9 +22,11 @@ export default function Layout() {
             className="flex items-center gap-3 group transition-opacity hover:opacity-90"
             title="Voltar ao início"
           >
-            <div className="w-10 h-10 rounded-full bg-emerald-500/15 border border-emerald-500/40 flex items-center justify-center text-emerald-400 group-hover:bg-emerald-500/25 transition-colors shadow-[0_0_12px_rgba(16,185,129,0.3)]">
-              <Clover className="w-5 h-5 text-emerald-400 fill-emerald-400/20" />
-            </div>
+            <img
+              src={`${import.meta.env.BASE_URL}favicon.svg`}
+              alt="Otimizador Mega-Sena"
+              className="w-10 h-10 rounded-xl border border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.3)]"
+            />
             <div className="flex flex-col">
               <span className="text-sm sm:text-base font-semibold text-white tracking-tight leading-tight">
                 Otimizador Estratégico
@@ -53,6 +57,26 @@ export default function Layout() {
                 <Award className="w-3.5 h-3.5 text-emerald-400" />
                 <span className="font-semibold">Mega-Sena</span>
               </div>
+              {user ? (
+                <div className="flex items-center gap-2 pl-1">
+                  {user.image ? (
+                    <img
+                      src={user.image}
+                      alt=""
+                      className="w-8 h-8 rounded-full border border-[#262c34]"
+                    />
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => void signOut()}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#161a1f] border border-[#262c34] text-zinc-300 text-xs font-medium hover:text-white hover:border-zinc-500"
+                    title="Sair"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Sair</span>
+                  </button>
+                </div>
+              ) : null}
             </div>
           </div>
         </div>

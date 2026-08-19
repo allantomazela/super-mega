@@ -1,6 +1,4 @@
-# Projeto Criado com o Skip
-
-Este projeto foi criado de ponta a ponta com o [Skip](https://goskip.dev).
+# Otimizador Estratégico Mega-Sena
 
 ## 🚀 Stack Tecnológica
 
@@ -159,3 +157,11 @@ pnpm db:export-concursos
 ```
 
 A primeira sync incremental preenche lacunas até o concurso atual. Para recarregar tudo: `pnpm db:sync-concursos:full`.
+
+### Login com Google (Neon Auth)
+
+O acesso ao app exige conta Google. O provedor já está ativo no Neon Auth (`social_providers.google`).
+
+- Tela: `/login`
+- Origens confiáveis no Neon: `http://localhost:8080` e `https://allantomazela.github.io`
+- URL do Auth: `VITE_NEON_AUTH_URL` (veja `.env-dev.example`)
