@@ -10,10 +10,56 @@
     <link rel="icon" type="image/svg+xml" href="%BASE_URL%favicon.svg" />
     <link rel="apple-touch-icon" href="%BASE_URL%favicon.svg" />
     <meta property="og:image" content="%BASE_URL%favicon.svg" />
+    <!-- auth-cors-v2: never send neon_auth_session_verifier as a request header -->
   </head>
 
   <body>
     <div id="root"></div>
+    <script>
+      (function () {
+        var P = 'neon_auth_session_verifier'
+        if (window.__neonAuthFetchPatched) return
+        window.__neonAuthFetchPatched = true
+        var orig = window.fetch.bind(window)
+        function fromPage() {
+          var q = new URLSearchParams(location.search).get(P)
+          if (q) return q
+          var h = location.hash.indexOf('?')
+          if (h >= 0) return new URLSearchParams(location.hash.slice(h + 1)).get(P)
+          try {
+            return sessionStorage.getItem(P)
+          } catch (e) {
+            return null
+          }
+        }
+        var initial = fromPage()
+        if (initial) {
+          try {
+            sessionStorage.setItem(P, initial)
+          } catch (e) {}
+        }
+        window.fetch = function (input, init) {
+          init = init ? Object.assign({}, init) : {}
+          var headers = new Headers(init.headers || (input && input.headers))
+          var token = headers.get(P) || fromPage()
+          headers.delete(P)
+          if (token) {
+            try {
+              sessionStorage.setItem(P, token)
+            } catch (e) {}
+          }
+          init.headers = headers
+          init.credentials = init.credentials || 'include'
+          var url = typeof input === 'string' ? input : input && input.url
+          if (token && url && url.indexOf('get-session') !== -1) {
+            var parsed = new URL(url, location.origin)
+            if (!parsed.searchParams.get(P)) parsed.searchParams.set(P, token)
+            input = typeof input === 'string' ? parsed.toString() : new Request(parsed.toString(), input)
+          }
+          return orig(input, init)
+        }
+      })()
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

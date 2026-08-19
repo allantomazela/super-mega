@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import { authClient, appCallbackUrl, consumeSessionVerifierFromUrl } from '@/lib/authClient'
+import { authClient, appCallbackUrl, limparVerifierGuardado } from '@/lib/authClient'
 
 export interface AuthUser {
   id: string
@@ -39,15 +39,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let ativo = true
-    consumeSessionVerifierFromUrl()
     void (async () => {
       try {
         for (let i = 0; i < 4; i++) {
           const atual = await buscarSessao()
           if (!ativo) return
           setUser(atual)
-          if (atual) break
-          await new Promise((resolve) => setTimeout(resolve, 300))
+          if (atual) {
+            limparVerifierGuardado()
+            break
+          }
+          await new Promise((resolve) => setTimeout(resolve, 400))
         }
       } finally {
         if (ativo) setLoading(false)
@@ -74,6 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       /* sessão já encerrada */
     }
+    limparVerifierGuardado()
     setUser(null)
   }
 
