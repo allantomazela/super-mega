@@ -7,11 +7,13 @@ export interface ResultadoCargaConcursos {
   origem: OrigemConcursos
 }
 
-const API_BASE = 'https://loteriascaixa-api.herokuapp.com/api/mega-sena'
+const API_BASE = 'https://loteriascaixa-api.herokuapp.com/api/megasena'
 
 interface ApiConcurso {
   numero?: number
+  concurso?: number
   data?: string
+  dataApuracao?: string
   dezenas?: string[]
   listaDezenas?: string[]
 }
@@ -28,12 +30,14 @@ function timeoutController(ms: number): AbortController {
 }
 
 function normalizarApi(dados: ApiConcurso): ConcursoHistorico | null {
+  const numero = dados.numero ?? dados.concurso
+  const data = dados.data ?? dados.dataApuracao
   const dezenas = (dados.dezenas ?? dados.listaDezenas ?? [])
     .map((d) => parseInt(d, 10))
     .filter((n) => !Number.isNaN(n))
     .sort((a, b) => a - b)
-  if (dezenas.length !== 6 || !dados.numero || !dados.data) return null
-  return { numero: dados.numero, data: dados.data, dezenas }
+  if (dezenas.length !== 6 || !numero || !data) return null
+  return { numero, data, dezenas }
 }
 
 let cacheSnapshot: ConcursoHistorico[] | null | undefined
@@ -123,17 +127,17 @@ export async function buscarConcursoPorNumero(numero: number): Promise<ConcursoH
 }
 
 /**
- * Ordem: API da Caixa → snapshot Neon (concursos.json) → base estática.
+ * Ordem: snapshot Neon (histórico completo) → API da Caixa → base estática.
  */
 export async function carregarConcursos(quantidade = 50): Promise<ResultadoCargaConcursos> {
-  const aoVivo = await buscarConcursosAoVivo(quantidade)
-  if (aoVivo && aoVivo.length >= 10) {
-    return { concursos: aoVivo, origem: 'api' }
-  }
-
   const neon = await buscarConcursosDoSnapshot()
   if (neon && neon.length >= 10) {
     return { concursos: neon.slice(0, Math.max(quantidade, neon.length)), origem: 'neon' }
+  }
+
+  const aoVivo = await buscarConcursosAoVivo(quantidade)
+  if (aoVivo && aoVivo.length >= 10) {
+    return { concursos: aoVivo, origem: 'api' }
   }
 
   return { concursos: CONCURSOS_HISTORICOS, origem: 'estatica' }
