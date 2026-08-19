@@ -69,6 +69,8 @@ import { useHistoricoConferencias } from '@/hooks/useHistoricoConferencias'
 import { TorneioMode } from '@/components/TorneioMode'
 import { FechamentoPanel } from '@/components/FechamentoPanel'
 import { ModeGuide } from '@/components/ModeGuide'
+import { UltimoSorteio } from '@/components/UltimoSorteio'
+import { FechamentoJogos } from '@/components/FechamentoJogos'
 import { useConcursos } from '@/hooks/useConcursos'
 import { useToast } from '@/hooks/use-toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -272,7 +274,7 @@ export default function Index() {
   const handleDragStart = (fromIdx: number, num: number) => {
     // Bloqueia saída se o bilhete de origem ficaria com menos de 5 dezenas
     const jogoOrigem = editableGames?.[fromIdx] ?? []
-    if (jogoOrigem.length <= 5) {
+    if (jogoOrigem.length <= FIVE_GAMES_SIZE) {
       setInvalidDropIdx(fromIdx)
       setTimeout(() => setInvalidDropIdx(null), 600)
       return
@@ -285,7 +287,7 @@ export default function Index() {
     if (dragInfo && dragInfo.fromIdx === toIdx) return
     const jogoDestino = editableGames?.[toIdx] ?? []
     // Só marca como drop válido se houver espaço (≤ 5)
-    if (jogoDestino.length < 5) {
+    if (jogoDestino.length < FIVE_GAMES_SIZE) {
       setDragOverIdx(toIdx)
     } else {
       setInvalidDropIdx(toIdx)
@@ -313,7 +315,7 @@ export default function Index() {
 
     const jogoDestino = editableGames[toIdx]
     // Bloqueia se destino já tem 5 dezenas
-    if (jogoDestino.length >= 5) {
+    if (jogoDestino.length >= FIVE_GAMES_SIZE) {
       setInvalidDropIdx(toIdx)
       setTimeout(() => setInvalidDropIdx(null), 600)
       setDragInfo(null)
@@ -376,6 +378,7 @@ export default function Index() {
   return (
     <div className="space-y-8 animate-fade-in">
       <ModeGuide mode={mode} onChange={handleModeChange} />
+      <UltimoSorteio />
 
       {/* Modo Torneio — renderização própria, independente do grid */}
       {isTorneio ? (
@@ -394,7 +397,7 @@ export default function Index() {
               </h1>
               <p className="text-sm sm:text-base text-zinc-400 mt-1">
                 {isCincoJogos
-                  ? `Selecione de ${FIVE_GAMES_MIN_SELECTION} a ${FIVE_GAMES_MAX_SELECTION} dezenas e gere 5 jogos otimizados de 5 dezenas.`
+                  ? `Selecione de ${FIVE_GAMES_MIN_SELECTION} a ${FIVE_GAMES_MAX_SELECTION} dezenas e gere 5 jogos oficiais de 6 dezenas.`
                   : isFechamento
                     ? 'Selecione exatamente 10 dezenas para o fechamento ótimo de 14 jogos (garantia de Quina).'
                     : 'Selecione entre 6 e 20 dezenas (limite oficial da Caixa) e aplique os filtros.'}
@@ -597,6 +600,7 @@ export default function Index() {
                   </div>
                 </>
               )}
+              {isFechamento ? <FechamentoJogos dezenas={selectedNumbers} /> : null}
             </section>
 
             {/* Right Column: Filters (Desdobramento) / Painel 5 Jogos */}
@@ -862,7 +866,7 @@ const FiveGamesPanel: React.FC<{
           <h2 className="text-lg font-bold text-white tracking-tight">Otimizador de Cobertura</h2>
         </div>
         <p className="text-xs text-zinc-400 mt-1.5">
-          Gera 5 jogos de 5 dezenas maximizando a cobertura do grupo
+          Gera 5 jogos de 6 dezenas maximizando a cobertura do grupo
         </p>
       </div>
 
@@ -876,9 +880,8 @@ const FiveGamesPanel: React.FC<{
             <div>
               <span className="text-sm font-semibold text-white">Como funciona</span>
               <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
-                As dezenas selecionadas são distribuídas estrategicamente em 5 jogos de 5 dezenas. O
-                algoritmo prioriza cobrir o máximo do grupo e balancear a repetição quando há menos
-                de 25 dezenas.
+                As dezenas selecionadas são distribuídas em 5 jogos oficiais de 6 dezenas. O
+                algoritmo prioriza cobrir o máximo do grupo e equilibrar a repetição.
               </p>
             </div>
           </div>
@@ -1118,7 +1121,7 @@ const FiveGamesResultSection: React.FC<{
             <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
               5 Jogos Otimizados
               <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#1a1f2b] border border-[#262c34] text-emerald-400">
-                5 jogos × 5 dezenas
+                5 jogos × 6 dezenas
               </span>
             </h2>
             <p className="text-xs text-zinc-400">

@@ -20,17 +20,17 @@ const MODES: {
   {
     key: 'cinco-jogos',
     label: '5 Jogos',
-    hint: '5 cartões otimizados',
+    hint: '5 jogos oficiais de 6',
     icon: Target,
-    how: 'Gera 5 jogos de 5 dezenas a partir do seu grupo, buscando cobertura e score. Não substitui o volante oficial de 6 dezenas da Mega-Sena: é um recorte estratégico para comparar conjuntos menores.',
-    when: 'Use para testar um núcleo reduzido, conferir e simular no histórico com poucos cartões.',
+    how: 'Gera 5 apostas simples oficiais da Mega-Sena (6 dezenas cada) a partir do seu grupo, buscando cobertura e score. São 5 volantes prontos para a lotérica.',
+    when: 'Use quando quiser poucos jogos de 6 dezenas, bem distribuídos, sem gastar o desdobramento completo.',
   },
   {
     key: 'torneio',
     label: 'Torneio',
     hint: 'Dois grupos lado a lado',
     icon: Swords,
-    how: 'Monta dois grupos independentes (A e B), gera os 5 jogos de cada um e compara score, cobertura e desempenho no histórico. O vencedor é o grupo com maior score médio (empate: maior cobertura).',
+    how: 'Monta dois grupos independentes (A e B), gera 5 jogos de 6 dezenas em cada um e compara score, cobertura e desempenho no histórico. O vencedor é o grupo com maior score médio (empate: maior cobertura).',
     when: 'Use para decidir entre duas listas de dezenas antes de gastar em volantes.',
   },
   {

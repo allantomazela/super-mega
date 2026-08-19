@@ -887,12 +887,12 @@ export function getScoreColor(score: number): ScoreColor {
  * ============================================================ */
 
 export const FIVE_GAMES_COUNT = 5
-export const FIVE_GAMES_SIZE = 5
-export const FIVE_GAMES_MIN_SELECTION = 5
+export const FIVE_GAMES_SIZE = 6
+export const FIVE_GAMES_MIN_SELECTION = 6
 export const FIVE_GAMES_MAX_SELECTION = 25
 
 export interface FiveGamesResult {
-  /** Os 5 jogos gerados, cada um com 5 dezenas ordenadas. */
+  /** Os 5 jogos gerados, cada um com 6 dezenas ordenadas. */
   games: number[][]
   /** Dezenas do grupo que aparecem em ao menos 1 jogo. */
   covered: number[]
@@ -902,14 +902,14 @@ export interface FiveGamesResult {
   coveragePercent: number
   /** Tamanho do grupo selecionado. */
   groupSize: number
-  /** Número total de slots (sempre 25 = 5 × 5). */
+  /** Número total de slots (5 jogos × 6 dezenas). */
   totalSlots: number
   /** Score probabilístico (0-100) de cada um dos 5 jogos. */
   scores: number[]
 }
 
 /**
- * Distribui as dezenas selecionadas em 5 jogos de 5 dezenas,
+ * Distribui as dezenas selecionadas em 5 jogos de 6 dezenas,
  * maximizando a cobertura do grupo e balanceando a repetição.
  */
 export function optimizeFiveGames(selected: number[]): FiveGamesResult {
