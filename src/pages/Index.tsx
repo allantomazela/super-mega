@@ -17,7 +17,6 @@ import {
   Copy,
   Check,
   Percent,
-  Layers,
   AlertCircle,
   BarChart3,
   PieChart,
@@ -25,8 +24,6 @@ import {
   Star,
   TrendingUp,
   Gauge,
-  Swords,
-  Grid3x3,
 } from 'lucide-react'
 import { useMega, AppMode } from '@/lib/MegaContext'
 import {
@@ -71,6 +68,7 @@ import { HistoricoConferencias } from '@/components/HistoricoConferencias'
 import { useHistoricoConferencias } from '@/hooks/useHistoricoConferencias'
 import { TorneioMode } from '@/components/TorneioMode'
 import { FechamentoPanel } from '@/components/FechamentoPanel'
+import { ModeGuide } from '@/components/ModeGuide'
 import { useConcursos } from '@/hooks/useConcursos'
 import { useToast } from '@/hooks/use-toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -377,8 +375,7 @@ export default function Index() {
 
   return (
     <div className="space-y-8 animate-fade-in">
-      {/* Mode Toggle (pills) */}
-      <ModeToggle mode={mode} onChange={handleModeChange} />
+      <ModeGuide mode={mode} onChange={handleModeChange} />
 
       {/* Modo Torneio — renderização própria, independente do grid */}
       {isTorneio ? (
@@ -636,84 +633,6 @@ export default function Index() {
       {!isTorneio && isCincoJogos && (
         <HistoricoConferencias historico={historico} onLimpar={limpar} />
       )}
-    </div>
-  )
-}
-
-/* ============================================================
- * Mode toggle (pills)
- * ============================================================ */
-const ModeToggle: React.FC<{
-  mode: AppMode
-  onChange: (m: AppMode) => void
-}> = ({ mode, onChange }) => {
-  const options: { key: AppMode; label: string; icon: React.ReactNode; hint: string }[] = [
-    {
-      key: 'desdobramento',
-      label: 'Modo Desdobramento',
-      icon: <Layers className="w-4 h-4" />,
-      hint: 'Gera todas as combinações de 6',
-    },
-    {
-      key: 'cinco-jogos',
-      label: 'Modo 5 Jogos',
-      icon: <Target className="w-4 h-4" />,
-      hint: '5 jogos otimizados de 5 dezenas',
-    },
-    {
-      key: 'torneio',
-      label: 'Modo Torneio',
-      icon: <Swords className="w-4 h-4" />,
-      hint: 'Compare dois grupos lado a lado',
-    },
-    {
-      key: 'fechamento',
-      label: 'Modo Fechamento',
-      icon: <Grid3x3 className="w-4 h-4" />,
-      hint: '10 dezenas → 14 jogos com garantia de Quina',
-    },
-  ]
-
-  return (
-    <div className="surface-card rounded-2xl p-2 shadow-lg flex flex-col sm:flex-row gap-2">
-      {options.map((opt) => {
-        const active = mode === opt.key
-        return (
-          <button
-            key={opt.key}
-            type="button"
-            onClick={() => onChange(opt.key)}
-            className={`
-              flex-1 flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-left
-              ${
-                active
-                  ? 'emerald-gradient emerald-glow text-white border border-emerald-300/40'
-                  : 'bg-[#1a1f2b] border border-[#262c34] text-zinc-300 hover:text-white hover:border-zinc-600'
-              }
-            `}
-          >
-            <div
-              className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                active
-                  ? 'bg-white/15 text-white'
-                  : 'bg-[#161a1f] border border-[#262c34] text-emerald-400'
-              }`}
-            >
-              {opt.icon}
-            </div>
-            <div className="min-w-0">
-              <div className="text-sm font-bold leading-tight truncate">{opt.label}</div>
-              <div
-                className={`text-[11px] mt-0.5 truncate ${
-                  active ? 'text-emerald-50/80' : 'text-zinc-500'
-                }`}
-              >
-                {opt.hint}
-              </div>
-            </div>
-          </button>
-        )
-      })}
     </div>
   )
 }
