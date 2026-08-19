@@ -1,5 +1,10 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import { authClient, appCallbackUrl, consumeSessionVerifierFromUrl } from '@/lib/authClient'
+import {
+  authClient,
+  appCallbackUrl,
+  consumeSessionVerifierFromUrl,
+  SESSION_VERIFIER_HEADER,
+} from '@/lib/authClient'
 
 export interface AuthUser {
   id: string
@@ -22,6 +27,20 @@ type SessionPayload = {
   session?: { id: string }
 }
 
+async function buscarSessao(verifier?: string | null): Promise<AuthUser | null> {
+  try {
+    const result = (await authClient.getSession({
+      query: {},
+      fetchOptions: verifier
+        ? { headers: { [SESSION_VERIFIER_HEADER]: verifier } }
+        : {},
+    })) as { data: SessionPayload | null }
+    return result.data?.user ?? null
+  } catch {
+    return null
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
@@ -30,17 +49,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let ativo = true
     void (async () => {
       try {
-        for (let i = 0; i < 6; i++) {
-          const result = (await authClient.getSession({ query: {} })) as {
-            data: SessionPayload | null
-          }
+        const verifier = consumeSessionVerifierFromUrl()
+        for (let i = 0; i < 4; i++) {
+          const atual = await buscarSessao(verifier)
           if (!ativo) return
-          const atual = result.data?.user ?? null
           setUser(atual)
-          if (atual) {
-            consumeSessionVerifierFromUrl()
-            break
-          }
+          if (atual) break
           await new Promise((resolve) => setTimeout(resolve, 300))
         }
       } finally {
@@ -63,7 +77,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function signOut() {
-    await authClient.signOut({})
+    try {
+      await authClient.signOut({})
+    } catch {
+      /* sessão já encerrada */
+    }
     setUser(null)
   }
 

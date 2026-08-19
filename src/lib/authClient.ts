@@ -6,8 +6,14 @@ export const NEON_AUTH_URL =
   import.meta.env.VITE_NEON_AUTH_URL ??
   'https://ep-small-paper-acm07pmb.neonauth.sa-east-1.aws.neon.tech/neondb/auth'
 
+const SESSION_VERIFIER_PARAM = 'neon_auth_session_verifier'
+
 export const authClient = createAuthClient(NEON_AUTH_URL, {
-  adapter: BetterAuthReactAdapter(),
+  adapter: BetterAuthReactAdapter({
+    fetchOptions: {
+      credentials: 'include',
+    },
+  }),
 })
 
 export function appCallbackUrl(): string {
@@ -18,11 +24,14 @@ export function appCallbackUrl(): string {
   return `${root}#/`
 }
 
+/** Lê e remove o verifier da URL antes do get-session (query extra gera HTTP 400). */
+export const SESSION_VERIFIER_HEADER = 'neon_auth_session_verifier'
+
 export function consumeSessionVerifierFromUrl(): string | null {
   const params = new URLSearchParams(window.location.search)
-  const verifier = params.get('neon_auth_session_verifier')
+  const verifier = params.get(SESSION_VERIFIER_PARAM)
   if (!verifier) return null
-  params.delete('neon_auth_session_verifier')
+  params.delete(SESSION_VERIFIER_PARAM)
   const next = `${window.location.pathname}${params.toString() ? `?${params}` : ''}${window.location.hash}`
   window.history.replaceState({}, '', next)
   return verifier
