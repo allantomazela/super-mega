@@ -1,12 +1,13 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { FilterOptions, DEFAULT_FILTERS, FIVE_GAMES_MAX_SELECTION } from './megaEngine'
 
-export type AppMode = 'desdobramento' | 'cinco-jogos' | 'torneio'
+export type AppMode = 'desdobramento' | 'cinco-jogos' | 'torneio' | 'fechamento'
 
 export const MODE_LABELS: Record<AppMode, string> = {
   desdobramento: 'Modo Desdobramento',
   'cinco-jogos': 'Modo 5 Jogos',
   torneio: 'Modo Torneio',
+  fechamento: 'Modo Fechamento',
 }
 
 interface MegaContextType {
@@ -59,14 +60,22 @@ export const MegaProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [mode, setMode] = useState<AppMode>(() => {
     try {
       const saved = sessionStorage.getItem(STORAGE_KEY_MODE)
-      if (saved === 'cinco-jogos' || saved === 'desdobramento' || saved === 'torneio') return saved
+      if (
+        saved === 'cinco-jogos' ||
+        saved === 'desdobramento' ||
+        saved === 'torneio' ||
+        saved === 'fechamento'
+      ) {
+        return saved
+      }
     } catch {
       // ignore
     }
     return 'desdobramento'
   })
 
-  const maxSelection = mode === 'cinco-jogos' || mode === 'torneio' ? FIVE_GAMES_MAX_SELECTION : 15
+  const maxSelection =
+    mode === 'fechamento' ? 10 : mode === 'cinco-jogos' || mode === 'torneio' ? FIVE_GAMES_MAX_SELECTION : 20
 
   useEffect(() => {
     try {

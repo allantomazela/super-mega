@@ -26,6 +26,7 @@ import {
   TrendingUp,
   Gauge,
   Swords,
+  Grid3x3,
 } from 'lucide-react'
 import { useMega, AppMode } from '@/lib/MegaContext'
 import {
@@ -69,6 +70,7 @@ import { GameScoreRadar } from '@/components/RadarChart'
 import { HistoricoConferencias } from '@/components/HistoricoConferencias'
 import { useHistoricoConferencias } from '@/hooks/useHistoricoConferencias'
 import { TorneioMode } from '@/components/TorneioMode'
+import { FechamentoPanel } from '@/components/FechamentoPanel'
 import { useConcursos } from '@/hooks/useConcursos'
 import { useToast } from '@/hooks/use-toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -91,6 +93,7 @@ export default function Index() {
 
   const isCincoJogos = mode === 'cinco-jogos'
   const isTorneio = mode === 'torneio'
+  const isFechamento = mode === 'fechamento'
 
   // === Histórico de Conferências (localStorage) ===
   const { historico, adicionar, limpar } = useHistoricoConferencias()
@@ -131,9 +134,19 @@ export default function Index() {
   const minRequired = isCincoJogos ? FIVE_GAMES_MIN_SELECTION : 6
   const isValidCount = isCincoJogos
     ? count >= FIVE_GAMES_MIN_SELECTION && count <= FIVE_GAMES_MAX_SELECTION
-    : count >= 6 && count <= 15
-  const isOverLimit = isCincoJogos ? count > FIVE_GAMES_MAX_SELECTION : count > 15
-  const isUnderLimit = isCincoJogos ? count < FIVE_GAMES_MIN_SELECTION : count < 6
+    : isFechamento
+      ? count === 10
+      : count >= 6 && count <= 20
+  const isOverLimit = isCincoJogos
+    ? count > FIVE_GAMES_MAX_SELECTION
+    : isFechamento
+      ? count > 10
+      : count > 20
+  const isUnderLimit = isCincoJogos
+    ? count < FIVE_GAMES_MIN_SELECTION
+    : isFechamento
+      ? count < 10
+      : count < 6
 
   // Circular progress indicator parameters
   const progressMax = maxSelection
@@ -159,7 +172,7 @@ export default function Index() {
   }
 
   const handleGenerateDesdobramento = () => {
-    if (count < 6 || count > 15) return
+    if (count < 6 || count > 20) return
     setIsLoading(true)
     setTimeout(() => {
       setIsLoading(false)
@@ -356,6 +369,9 @@ export default function Index() {
       setFiveGamesResult(null)
       setEditableGames(null)
     }
+    if (next === 'fechamento' && selectedNumbers.length > 10) {
+      setSelectedNumbers(selectedNumbers.slice(0, 10))
+    }
     setMode(next)
   }
 
@@ -373,12 +389,18 @@ export default function Index() {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#262c34] pb-6">
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-                {isCincoJogos ? 'Otimizador de 5 Jogos' : 'Monte seu Grupo de Dezenas'}
+                {isCincoJogos
+                  ? 'Otimizador de 5 Jogos'
+                  : isFechamento
+                    ? 'Fechamento Combinatório Ótimo'
+                    : 'Monte seu Grupo de Dezenas'}
               </h1>
               <p className="text-sm sm:text-base text-zinc-400 mt-1">
                 {isCincoJogos
                   ? `Selecione de ${FIVE_GAMES_MIN_SELECTION} a ${FIVE_GAMES_MAX_SELECTION} dezenas e gere 5 jogos otimizados de 5 dezenas.`
-                  : 'Selecione entre 6 e 15 dezenas e aplique os filtros para otimizar seu jogo.'}
+                  : isFechamento
+                    ? 'Selecione exatamente 10 dezenas para o fechamento ótimo de 14 jogos (garantia de Quina).'
+                    : 'Selecione entre 6 e 20 dezenas (limite oficial da Caixa) e aplique os filtros.'}
               </p>
             </div>
 
@@ -513,7 +535,9 @@ export default function Index() {
                       <p className="text-xs text-zinc-400 mt-0.5">
                         {isCincoJogos
                           ? `Mínimo ${FIVE_GAMES_MIN_SELECTION} e máximo ${FIVE_GAMES_MAX_SELECTION} dezenas para otimização de cobertura.`
-                          : 'Mínimo 6 e máximo 15 dezenas (padrão oficial de desdobramento).'}
+                          : isFechamento
+                            ? 'Exatamente 10 dezenas para o fechamento L(10,6,6,5).'
+                            : 'Mínimo 6 e máximo 20 dezenas (volante oficial da Mega-Sena).'}
                       </p>
                     </div>
                   </div>
@@ -591,6 +615,8 @@ export default function Index() {
                   meta={meta}
                   onMetaChange={handleMetaChange}
                 />
+              ) : isFechamento ? (
+                <FechamentoPanel dezenas={selectedNumbers} />
               ) : (
                 <FiltersPanel
                   filters={filters}
@@ -639,6 +665,12 @@ const ModeToggle: React.FC<{
       label: 'Modo Torneio',
       icon: <Swords className="w-4 h-4" />,
       hint: 'Compare dois grupos lado a lado',
+    },
+    {
+      key: 'fechamento',
+      label: 'Modo Fechamento',
+      icon: <Grid3x3 className="w-4 h-4" />,
+      hint: '10 dezenas → 14 jogos com garantia de Quina',
     },
   ]
 

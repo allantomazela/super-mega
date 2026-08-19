@@ -25,18 +25,7 @@ export const DEFAULT_FILTERS: FilterOptions = {
   sequence: true,
 }
 
-export const PRICE_PER_GAME = 5.0
-
-// Import do modelo de popularidade (dependência circular segura em ESM:
-// as funções só são invocadas em runtime, nunca na avaliação do módulo).
-import { estimatePopularityFactor, popularidadeLabel, calculateRealEVJogo } from './popularityModel'
-
-/* ============================================================
- * Limite Inferior de Schönheim — Covering Designs
- * ============================================================
- * Para um (v, k, t) covering design (v dezenas, blocos de tamanho k,
-=======
-export const PRICE_PER_GAME = 5.0
+export const PRICE_PER_GAME = 6.0
 
 // Import do modelo de popularidade (dependência circular segura em ESM:
 // as funções só são invocadas em runtime, nunca na avaliação do módulo).

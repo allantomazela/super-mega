@@ -46,6 +46,7 @@ import {
   getScoreColor,
 } from '@/lib/megaEngine'
 import { estimatePopularityFactor } from '@/lib/popularityModel'
+import { combinacoesSimples, precoOficialCaixa } from '@/lib/caixaOficial'
 import { ScoreHistogram } from '@/components/ScoreHistogram'
 import { SimulacaoHistorica } from '@/components/SimulacaoHistorica'
 import { PrintableVersion, jogosComScore } from '@/components/PrintableVersion'
@@ -114,12 +115,13 @@ export default function Resultados() {
       }
     }
 
-    const raw = generateCombinations(selectedNumbers, 6)
-    const filtered = applyFilters(raw, filters)
-    const rawCount = raw.length
-    const filteredCount = filtered.length
-    const eco = (rawCount - filteredCount) * PRICE_PER_GAME
-    const cost = filteredCount * PRICE_PER_GAME
+    const tooMany = selectedNumbers.length > 15
+    const raw = tooMany ? [] : generateCombinations(selectedNumbers, 6)
+    const filtered = tooMany ? [] : applyFilters(raw, filters)
+    const rawCount = tooMany ? combinacoesSimples(selectedNumbers.length) : raw.length
+    const filteredCount = tooMany ? rawCount : filtered.length
+    const eco = tooMany ? 0 : (rawCount - filteredCount) * PRICE_PER_GAME
+    const cost = tooMany ? precoOficialCaixa(selectedNumbers.length) : filteredCount * PRICE_PER_GAME
 
     return {
       totalRaw: rawCount,
@@ -349,6 +351,15 @@ export default function Resultados() {
           </span>
         </div>
       </section>
+
+      {selectedNumbers.length > 15 ? (
+        <section className="rounded-2xl p-4 border border-amber-500/30 bg-amber-950/20 text-sm text-amber-200">
+          A Caixa registra até 20 dezenas num único volante (C({selectedNumbers.length},6) ={' '}
+          {totalRaw.toLocaleString('pt-BR')} jogos, {formatCurrencyBRL(totalCost)}). A listagem
+          detalhada de cada jogo simples fica limitada a 15 dezenas neste app para não travar o
+          navegador. Para 10 dezenas com garantia de Quina, use o Modo Fechamento (14 jogos).
+        </section>
+      ) : null}
 
       {/* === Controle de Filtro por Score (Slider) === */}
       <section className="surface-card rounded-2xl p-5 sm:p-6 border border-[#262c34] shadow-lg space-y-4">
