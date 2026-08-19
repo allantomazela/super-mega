@@ -24,7 +24,8 @@ import {
   optimizeFiveGamesV3,
   FiveGamesResult,
 } from '@/lib/megaEngine'
-import { CONCURSOS_HISTORICOS, simularConjunto } from '@/data/concursosHistoricos'
+import { simularConjunto } from '@/data/concursosHistoricos'
+import { useConcursos } from '@/hooks/useConcursos'
 import { ComparacaoConcurso, ConferenciaCallbackPayload } from '@/components/ComparacaoConcurso'
 import { GameScoreRadar } from '@/components/RadarChart'
 import { HistoricoConferencias } from '@/components/HistoricoConferencias'
@@ -66,6 +67,7 @@ export const TorneioMode: React.FC = () => {
   const [copied, setCopied] = useState<{ grupo: GrupoId; idx: number } | null>(null)
   const { toast } = useToast()
   const { historico, adicionar, limpar } = useHistoricoConferencias()
+  const { concursos } = useConcursos()
 
   const toggleNumber = (grupo: GrupoId, n: number) => {
     setGrupos((prev) => {
@@ -134,12 +136,12 @@ export const TorneioMode: React.FC = () => {
   const simulacao = useMemo(() => {
     const calc = (g: GrupoState) => {
       if (!g.result) return null
-      return simularConjunto(g.result.games, CONCURSOS_HISTORICOS)
+      return simularConjunto(g.result.games, concursos)
     }
     const a = calc(grupos.A)
     const b = calc(grupos.B)
     return { a, b }
-  }, [grupos])
+  }, [grupos, concursos])
 
   // === Vencedor (pelo score médio; empate considera cobertura) ===
   const vencedor = useMemo<GrupoId | null>(() => {
@@ -327,7 +329,7 @@ export const TorneioMode: React.FC = () => {
             <strong className="text-zinc-200">Critério do vencedor:</strong> o grupo com maior score
             médio vence. Em caso de empate, prevalece a maior cobertura. As métricas históricas
             (quadras/quinas/senas) são exibidas como referência retrospectiva contra os últimos{' '}
-            {CONCURSOS_HISTORICOS.length} concursos reais.
+            {concursos.length} concursos reais.
           </div>
         </section>
       )}

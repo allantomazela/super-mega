@@ -5,8 +5,20 @@ import path from 'path'
 // @ts-expect-error - uidPlugin is a custom plugin
 import uidPlugin from './vite-plugin-react-uid'
 
+function pagesBase(): string {
+  if (process.env.VITE_BASE_PATH) return process.env.VITE_BASE_PATH
+  const repo = process.env.GITHUB_REPOSITORY
+  if (process.env.GITHUB_ACTIONS && repo) {
+    const name = repo.split('/')[1]
+    if (name.endsWith('.github.io')) return '/'
+    return `/${name}/`
+  }
+  return '/'
+}
+
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
+  base: pagesBase(),
   server: {
     host: '::',
     port: 8080,

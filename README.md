@@ -122,10 +122,40 @@ Este template inclui uma biblioteca completa de componentes Shadcn UI baseados e
 
 ## 📦 Build e Deploy
 
-Para criar uma build otimizada para produção:
-
 ```bash
-npm run build
+pnpm build
 ```
 
-Os arquivos otimizados serão gerados na pasta `dist/` e estarão prontos para deploy.
+Os arquivos otimizados vão para `dist/`.
+
+### GitHub Pages
+
+O workflow `.github/workflows/deploy-pages.yml` publica o site em:
+
+`https://allantomazela.github.io/super-mega/`
+
+Passos únicos no GitHub:
+
+1. **Settings → Pages → Source:** GitHub Actions
+2. **Settings → Secrets and variables → Actions:** cadastre `DATABASE_URL` (Neon produção) e, se quiser, `DATABASE_URL_DEV`
+3. Faça push da `main` (ou rode o workflow *Publicar GitHub Pages* manualmente)
+
+O React Router usa o `basename` do Vite (`/super-mega/` no Pages). Em `pnpm start` o base continua `/`.
+
+### Neon (histórico de concursos)
+
+O app é estático (Pages não tem backend). Por isso:
+
+1. A Action grava os concursos oficiais da Caixa no Neon
+2. No deploy, exporta um snapshot `concursos.json` junto com o site
+3. O frontend tenta, nesta ordem: API da Caixa → snapshot Neon → base estática
+
+```bash
+cp .env-dev.example .env-dev
+# cole a connection string do Neon em DATABASE_URL
+pnpm db:ping
+pnpm db:sync-concursos
+pnpm db:export-concursos
+```
+
+A primeira sync incremental preenche lacunas até o concurso atual. Para recarregar tudo: `pnpm db:sync-concursos:full`.

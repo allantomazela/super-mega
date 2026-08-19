@@ -105,8 +105,8 @@ export interface ResumoSimulacao {
   totalQuinas: number
   /** Soma de senas de todos os jogos. */
   totalSenas: number
-  /** Origem dos dados: 'api' ou 'estatica'. */
-  origem: 'api' | 'estatica'
+  /** Origem dos dados: API da Caixa, snapshot Neon ou base estática. */
+  origem: 'api' | 'neon' | 'estatica'
 }
 
 /* ============================================================
@@ -220,7 +220,7 @@ export function simularConjunto(
 export function montarResumoSimulacao(
   jogos: number[][],
   concursos: ConcursoHistorico[],
-  origem: 'api' | 'estatica' = 'estatica',
+  origem: 'api' | 'neon' | 'estatica' = 'estatica',
 ): ResumoSimulacao {
   const resultados = simularJogos(jogos, concursos)
   const totalQuadras = resultados.reduce((acc, r) => acc + r.quadras, 0)
@@ -241,86 +241,5 @@ export function montarResumoSimulacao(
     totalQuinas,
     totalSenas,
     origem,
-  }
-}
-
-/* ============================================================
- * Fetch ao vivo (com fallback para base estática)
- * ============================================================ */
-
-const API_BASE = 'https://loteriascaixa-api.herokuapp.com/api/mega-sena'
-
-interface ApiConcurso {
-  numero?: number
-  data?: string
-  dezenas?: string[]
-  listaDezenas?: string[]
-}
-
-/**
- * Cria um AbortController que aborta após `ms` milissegundos.
- * Usa setTimeout manual para garantir o timeout em qualquer ambiente
- * (AbortSignal.timeout pode não funcionar em alguns ambientes de preview).
- */
-function timeoutController(ms: number): AbortController {
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), ms)
-  // Limpa o timer quando o request for abortado/concluído
-  controller.signal.addEventListener('abort', () => clearTimeout(timer))
-  return controller
-}
-
-export async function buscarConcursosAoVivo(quantidade = 50): Promise<ConcursoHistorico[] | null> {
-  try {
-    // Busca o concurso mais recente para descobrir o número atual
-    const latestController = timeoutController(6000)
-    const respLatest = await fetch(`${API_BASE}/latest`, {
-      signal: latestController.signal,
-    })
-    if (!respLatest.ok) return null
-    const latest = (await respLatest.json()) as ApiConcurso
-    const numeroLatest = latest?.numero
-    if (!numeroLatest || !latest?.dezenas) return null
-
-    // Busca os concursos anteriores em paralelo (lotes)
-    const alvos: number[] = []
-    for (let i = 0; i < quantidade; i++) {
-      alvos.push(numeroLatest - i)
-    }
-
-    const resultados: ConcursoHistorico[] = []
-    // Busca em lotes de 10 para não estourar simultaneidade
-    const TAMANHO_LOTE = 10
-    for (let ini = 0; ini < alvos.length; ini += TAMANHO_LOTE) {
-      const lote = alvos.slice(ini, ini + TAMANHO_LOTE)
-      const respostas = await Promise.allSettled(
-        lote.map(async (num) => {
-          const controller = timeoutController(6000)
-          const r = await fetch(`${API_BASE}/${num}`, { signal: controller.signal })
-          if (!r.ok) throw new Error(`HTTP ${r.status}`)
-          return r.json()
-        }),
-      )
-      for (const r of respostas) {
-        if (r.status === 'fulfilled') {
-          const dados = r.value as ApiConcurso
-          const dezenas = (dados.dezenas ?? dados.listaDezenas ?? [])
-            .map((d) => parseInt(d, 10))
-            .filter((n) => !Number.isNaN(n))
-            .sort((a, b) => a - b)
-          if (dezenas.length === 6 && dados.numero && dados.data) {
-            resultados.push({ numero: dados.numero, data: dados.data, dezenas })
-          }
-        }
-      }
-    }
-
-    // Ordena do mais recente para o mais antigo
-    resultados.sort((a, b) => b.numero - a.numero)
-
-    if (resultados.length < 10) return null // muito poucos — usa fallback
-    return resultados.slice(0, quantidade)
-  } catch {
-    return null
   }
 }

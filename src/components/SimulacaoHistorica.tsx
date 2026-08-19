@@ -1,15 +1,13 @@
-import React, { useEffect, useMemo, useState } from 'react'
-import { History, Trophy, Wifi, WifiOff, Award } from 'lucide-react'
+import React, { useMemo } from 'react'
+import { History, Trophy, Wifi, WifiOff, Award, Database } from 'lucide-react'
 import {
-  CONCURSOS_HISTORICOS,
-  ConcursoHistorico,
   montarResumoSimulacao,
   simularConjunto,
-  buscarConcursosAoVivo,
   ResumoSimulacao,
   ResultadoJogoSimulacao,
 } from '@/data/concursosHistoricos'
 import { formatGameString } from '@/lib/megaEngine'
+import { useConcursos } from '@/hooks/useConcursos'
 
 /* ============================================================
  * SimulacaoHistorica — compara jogos gerados contra a base
@@ -31,30 +29,7 @@ export const SimulacaoHistorica: React.FC<SimulacaoHistoricaProps> = ({
   jogos,
   conjunto = false,
 }) => {
-  // Abordagem otimista: inicia já com a base estática, exibindo a
-  // simulação imediatamente. Em paralelo dispara a busca à API ao vivo;
-  // se retornar dados válidos (≥10 concursos), troca para 'api'.
-  const [concursos, setConcursos] = useState<ConcursoHistorico[]>(CONCURSOS_HISTORICOS)
-  const [origem, setOrigem] = useState<'api' | 'estatica'>('estatica')
-
-  useEffect(() => {
-    let cancelado = false
-    buscarConcursosAoVivo(50)
-      .then((dados) => {
-        if (cancelado) return
-        if (dados && dados.length >= 10) {
-          setConcursos(dados)
-          setOrigem('api')
-        }
-        // Caso contrário mantém a base estática já exibida.
-      })
-      .catch(() => {
-        /* mantém base estática */
-      })
-    return () => {
-      cancelado = true
-    }
-  }, [])
+  const { concursos, origem } = useConcursos()
 
   // Resultado da simulação — sempre calcula quando há jogos, usando os
   // concursos atuais (estáticos ou ao vivo). Não gateia por carregamento.
@@ -108,14 +83,24 @@ export const SimulacaoHistorica: React.FC<SimulacaoHistoricaProps> = ({
           className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-semibold ${
             origem === 'api'
               ? 'bg-emerald-950/50 border-emerald-500/30 text-emerald-400'
-              : 'bg-amber-950/50 border-amber-500/30 text-amber-400'
+              : origem === 'neon'
+                ? 'bg-cyan-950/50 border-cyan-500/30 text-cyan-400'
+                : 'bg-amber-950/50 border-amber-500/30 text-amber-400'
           }`}
         >
-          {origem === 'api' ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
+          {origem === 'api' ? (
+            <Wifi className="w-3 h-3" />
+          ) : origem === 'neon' ? (
+            <Database className="w-3 h-3" />
+          ) : (
+            <WifiOff className="w-3 h-3" />
+          )}
           <span>
             {origem === 'api'
               ? `${concursos.length} concursos (API)`
-              : `${concursos.length} concursos (local)`}
+              : origem === 'neon'
+                ? `${concursos.length} concursos (Neon)`
+                : `${concursos.length} concursos (local)`}
           </span>
         </div>
       </div>

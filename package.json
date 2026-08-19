@@ -22,7 +22,9 @@
     "db:sync-concursos": "node --env-file=.env-dev scripts/sync-concursos-neon.mjs",
     "db:sync-concursos:full": "node --env-file=.env-dev scripts/sync-concursos-neon.mjs --full",
     "db:sync-concursos:homolog": "node --env-file=.env-homolog scripts/sync-concursos-neon.mjs",
-    "db:sync-concursos:prod": "node --env-file=.env-prod scripts/sync-concursos-neon.mjs"
+    "db:sync-concursos:prod": "node --env-file=.env-prod scripts/sync-concursos-neon.mjs",
+    "db:export-concursos": "node --env-file=.env-dev scripts/export-concursos-json.mjs",
+    "db:export-concursos:prod": "node --env-file=.env-prod scripts/export-concursos-json.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",

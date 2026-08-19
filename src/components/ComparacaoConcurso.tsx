@@ -12,6 +12,7 @@ import {
   Eraser,
 } from 'lucide-react'
 import { formatTwoDigits, formatGameString } from '@/lib/megaEngine'
+import { buscarConcursoPorNumero } from '@/data/carregarConcursos'
 
 /* ============================================================
  * ComparacaoConcurso — compara os jogos gerados contra um
@@ -121,33 +122,15 @@ export const ComparacaoConcurso: React.FC<ComparacaoConcursoProps> = ({
     setResultado(null)
 
     try {
-      const controller = new AbortController()
-      const timer = setTimeout(() => controller.abort(), 8000)
-      const resp = await fetch(`https://loteriascaixa-api.herokuapp.com/api/mega-sena/${num}`, {
-        signal: controller.signal,
-      })
-      clearTimeout(timer)
-      if (!resp.ok) {
-        setErroBusca(`Concurso ${num} não encontrado (HTTP ${resp.status}).`)
+      const concurso = await buscarConcursoPorNumero(num)
+      if (!concurso) {
+        setErroBusca(`Concurso ${num} não encontrado.`)
         return
       }
-      const dados = await resp.json()
-      const dezenas: number[] = (dados.dezenas ?? dados.listaDezenas ?? [])
-        .map((d: string) => parseInt(d, 10))
-        .filter((n: number) => !Number.isNaN(n))
-        .sort((a: number, b: number) => a - b)
-      if (dezenas.length !== NUM_DEZENAS) {
-        setErroBusca('O concurso retornado não possui 6 dezenas válidas.')
-        return
-      }
-      setDezenasConcurso(dezenas)
-      setDataSorteio(dados.data ? String(dados.data) : null)
-    } catch (e) {
-      if ((e as Error).name === 'AbortError') {
-        setErroBusca('Tempo limite excedido ao buscar o concurso. Tente novamente.')
-      } else {
-        setErroBusca('Não foi possível buscar o concurso. Verifique sua conexão.')
-      }
+      setDezenasConcurso(concurso.dezenas)
+      setDataSorteio(concurso.data)
+    } catch {
+      setErroBusca('Não foi possível buscar o concurso. Verifique sua conexão.')
     } finally {
       setBuscando(false)
     }

@@ -45,6 +45,13 @@ screenshot.png
 # Environment variables
 .env*
 !.env
+!.env-dev.example
+!.env-homolog.example
+!.env-prod.example
+!.env-*.example
+
+# Snapshot gerado a partir do Neon (CI / pnpm db:export-concursos)
+public/concursos.json
 
 # Linux kernel core dumps (e.g. when oxfmt or pnpm crash)
 core.[0-9]*

@@ -9,8 +9,10 @@ import NotFound from './pages/NotFound'
 import Layout from './components/Layout'
 import { MegaProvider } from './lib/MegaContext'
 
+const basename = import.meta.env.BASE_URL.replace(/\/$/, '')
+
 const App = () => (
-  <BrowserRouter>
+  <BrowserRouter basename={basename || undefined}>
     <TooltipProvider>
       <MegaProvider>
         <Toaster />

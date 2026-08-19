@@ -7,8 +7,8 @@ const BATCH = 200
 const full = process.argv.includes('--full')
 
 if (!DATABASE_URL) {
-  const secretName = process.env.REQUIRED_SECRET || 'DATABASE_URL'
-  if (process.env.SKIP_IF_NO_URL === '1') {
+  const secretName = process.env.REQUIRED_SECRET || process.env.REQUIRED_SECRET || 'DATABASE_URL'
+  if (process.env.SKIP_IF_NO_URL === '1' || process.env.SKIP_IF_NO_URL === '1') {
     console.log(
       `Secret ${secretName} ausente. Pulando sincronização. Cadastre-o em Settings → Secrets and variables → Actions.`,
     )
@@ -16,6 +16,23 @@ if (!DATABASE_URL) {
   }
   console.error(`Secret ${secretName} ausente. Use: pnpm db:sync-concursos`)
   process.exit(1)
+}
+
+async function garantirSchema(sql) {
+  await sql.query(`
+    CREATE TABLE IF NOT EXISTS public.concursos (
+      numero integer PRIMARY KEY,
+      data_sorteio date NOT NULL,
+      dezenas smallint[] NOT NULL,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now(),
+      CONSTRAINT concursos_dezenas_len CHECK (cardinality(dezenas) = 6)
+    )
+  `)
+  await sql.query(`
+    CREATE INDEX IF NOT EXISTS concursos_data_sorteio_idx
+      ON public.concursos (data_sorteio DESC)
+  `)
 }
 
 function toIsoDate(brDate) {
@@ -105,6 +122,9 @@ async function gravarLotes(sql, rows) {
 }
 
 const sql = neon(DATABASE_URL)
+
+console.log('Garantindo schema public.concursos...')
+await garantirSchema(sql)
 
 console.log('Buscando último concurso oficial da Caixa...')
 const ultimo = normalizar(await fetchJson(`${CAIXA}/latest`))

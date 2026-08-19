@@ -69,7 +69,7 @@ import { GameScoreRadar } from '@/components/RadarChart'
 import { HistoricoConferencias } from '@/components/HistoricoConferencias'
 import { useHistoricoConferencias } from '@/hooks/useHistoricoConferencias'
 import { TorneioMode } from '@/components/TorneioMode'
-import { CONCURSOS_HISTORICOS } from '@/data/concursosHistoricos'
+import { useConcursos } from '@/hooks/useConcursos'
 import { useToast } from '@/hooks/use-toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
@@ -87,6 +87,7 @@ export default function Index() {
     resetAll,
   } = useMega()
   const { toast } = useToast()
+  const { concursos } = useConcursos()
 
   const isCincoJogos = mode === 'cinco-jogos'
   const isTorneio = mode === 'torneio'
@@ -115,9 +116,9 @@ export default function Index() {
 
   // === Frequência Histórica (heatmap no grid de seleção) ===
   // Usa a base estática de concursos (a mesma do SimulacaoHistorica).
-  const freqMap = useMemo(() => calcularFrequencias(CONCURSOS_HISTORICOS), [])
+  const freqMap = useMemo(() => calcularFrequencias(concursos), [concursos])
   const freqMedia = useMemo(() => frequenciaMediaGlobal(freqMap), [freqMap])
-  const totalConcursos = CONCURSOS_HISTORICOS.length
+  const totalConcursos = concursos.length
 
   // Resultado "ao vivo" — recalculado a cada edição manual (drag-and-drop).
   // Quando não há edições, equivale ao resultado original otimizado.
