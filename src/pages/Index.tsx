@@ -28,7 +28,7 @@ import {
 import { useMega, AppMode } from '@/lib/MegaContext'
 import {
   formatTwoDigits,
-  formatGameCsv,
+  formatGameString,
   buildJogosTxtCaixa,
   formatCurrencyBRL,
   formatNumberBR,
@@ -259,7 +259,7 @@ export default function Index() {
   }
 
   const copyGameToClipboard = (game: number[], index: number) => {
-    navigator.clipboard.writeText(formatGameCsv(game))
+    navigator.clipboard.writeText(formatGameString(game))
     setCopiedIndex(index)
     setTimeout(() => setCopiedIndex(null), 1500)
   }
@@ -1303,7 +1303,7 @@ const FiveGamesResultSection: React.FC<{
 
               {/* String formatada */}
               <div className="mt-3 pt-2 border-t border-[#262c34]/60 text-[11px] text-zinc-400 font-mono text-center tracking-tight">
-                {formatGameCsv(game)}
+                {formatGameString(game)}
               </div>
 
               {/* Score de Acertividade */}

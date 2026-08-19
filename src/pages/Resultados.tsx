@@ -33,7 +33,7 @@ import {
   formatTwoDigits,
   formatCurrencyBRL,
   formatNumberBR,
-  formatGameCsv,
+  formatGameString,
   buildJogosTxtCaixa,
   calculateGameScore,
   computeScoreV3,
@@ -299,7 +299,7 @@ export default function Resultados() {
   }, [showToast])
 
   const copyGameToClipboard = (game: number[], index: number) => {
-    navigator.clipboard.writeText(formatGameCsv(game))
+    navigator.clipboard.writeText(formatGameString(game))
     setCopiedIndex(index)
     setTimeout(() => setCopiedIndex(null), 1500)
   }

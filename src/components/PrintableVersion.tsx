@@ -50,7 +50,7 @@ export const PrintableVersion: React.FC<PrintableVersionProps> = ({
     const linhas = jogos
       .map((jogo, idx) => {
         const num = String(idx + 1).padStart(2, '0')
-        const dezenasStr = jogo.dezenas.map(formatTwoDigits).join(',')
+        const dezenasStr = jogo.dezenas.map(formatTwoDigits).join(' - ')
         const scoreStr = jogo.score !== undefined ? ` — Score: ${jogo.score}%` : ''
         return `<div class="jogo"><span class="num">Jogo ${num}:</span> ${dezenasStr}${scoreStr}</div>`
       })

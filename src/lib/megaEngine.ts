@@ -556,9 +556,16 @@ export function formatGameCsv(game: number[]): string {
     .join(',')
 }
 
-/** Um jogo por linha, pronto para preencher volante ou colar. */
+/** TXT oficial: Bilhete Nº 01 + linha 01,25,36,38,52,56,57 */
 export function buildJogosTxtCaixa(games: number[][]): string {
-  return games.map(formatGameCsv).join('\n') + '\n'
+  return (
+    games
+      .map((game, idx) => {
+        const n = formatTwoDigits(idx + 1)
+        return `Bilhete Nº ${n}\n${formatGameCsv(game)}`
+      })
+      .join('\n\n') + '\n'
+  )
 }
 
 /** Format currency in BRL (R$ 1.500,00). */

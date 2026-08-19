@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Copy, Check } from 'lucide-react'
 import { aplicarFechamentoL10 } from '@/lib/coveringDesign'
-import { formatTwoDigits, formatGameCsv, buildJogosTxtCaixa } from '@/lib/megaEngine'
+import { formatTwoDigits, formatGameString, buildJogosTxtCaixa } from '@/lib/megaEngine'
 import { ComparacaoConcurso } from '@/components/ComparacaoConcurso'
 import { VolanteOficial } from '@/components/VolanteOficial'
 import { SimulacaoHistorica } from '@/components/SimulacaoHistorica'
@@ -23,7 +23,7 @@ export function FechamentoJogos({ dezenas }: FechamentoJogosProps) {
   if (jogos.length === 0) return null
 
   function copiar(jogo: number[], idx: number) {
-    void navigator.clipboard.writeText(formatGameCsv(jogo))
+    void navigator.clipboard.writeText(formatGameString(jogo))
     setCopiado(idx)
     setTimeout(() => setCopiado(null), 1400)
   }
@@ -69,7 +69,7 @@ export function FechamentoJogos({ dezenas }: FechamentoJogosProps) {
               {formatTwoDigits(idx + 1)}
             </span>
             <span className="font-mono text-sm text-emerald-300 flex-1 tracking-wide">
-              {formatGameCsv(jogo)}
+              {formatGameString(jogo)}
             </span>
             <button type="button" onClick={() => copiar(jogo, idx)} className="text-zinc-400 hover:text-white">
               {copiado === idx ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
