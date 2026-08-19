@@ -5,10 +5,10 @@ import { Toaster as Sonner } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import Index from './pages/Index'
 import Resultados from './pages/Resultados'
-import NotFound from './pages/NotFound'
 import Login from './pages/Login'
 import Layout from './components/Layout'
 import { RequireAuth } from './components/RequireAuth'
+import { PostAuthRedirect } from './components/PostAuthRedirect'
 import { MegaProvider } from './lib/MegaContext'
 import { AuthProvider } from './lib/AuthContext'
 
@@ -29,7 +29,7 @@ const App = () => (
                 <Route path="/resultados" element={<Resultados />} />
               </Route>
             </Route>
-            <Route path="*" element={<NotFound />} />
+            <Route path="*" element={<PostAuthRedirect />} />
           </Routes>
         </MegaProvider>
       </AuthProvider>

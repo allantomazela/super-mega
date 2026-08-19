@@ -12,6 +12,8 @@ export const authClient = createAuthClient({
 export function appCallbackUrl(): string {
   const base = import.meta.env.BASE_URL || '/'
   const origin = window.location.origin
-  if (base === '/') return `${origin}/`
-  return `${origin}${base.endsWith('/') ? base : `${base}/`}`
+  const root =
+    base === '/' ? `${origin}/` : `${origin}${base.endsWith('/') ? base : `${base}/`}`
+  // Hash garante que o GitHub Pages sirva index.html (HTTP 200), não o 404 do site.
+  return `${root}#/`
 }

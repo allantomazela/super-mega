@@ -30,11 +30,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let ativo = true
     void (async () => {
       try {
-        const result = (await authClient.getSession({ query: {} })) as {
-          data: SessionPayload | null
+        for (let i = 0; i < 4; i++) {
+          const result = (await authClient.getSession({ query: {} })) as {
+            data: SessionPayload | null
+          }
+          if (!ativo) return
+          const atual = result.data?.user ?? null
+          setUser(atual)
+          if (atual) break
+          await new Promise((resolve) => setTimeout(resolve, 250))
         }
-        if (!ativo) return
-        setUser(result.data?.user ?? null)
       } finally {
         if (ativo) setLoading(false)
       }
@@ -45,9 +50,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   async function signInGoogle() {
+    const callbackURL = appCallbackUrl()
     await authClient.signIn.social({
       provider: 'google',
-      callbackURL: appCallbackUrl(),
+      callbackURL,
+      errorCallbackURL: callbackURL,
+      newUserCallbackURL: callbackURL,
     })
   }
 
