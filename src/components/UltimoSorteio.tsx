@@ -41,7 +41,7 @@ export function UltimoSorteio() {
     )
   }
 
-  const senaGanha = !info.acumulado && info.ganhadoresSena > 0
+  const senaGanha = info.ganhadoresSena > 0
 
   return (
     <section className="rounded-2xl border border-emerald-500/25 bg-[#12161b] px-4 py-3 sm:px-5">

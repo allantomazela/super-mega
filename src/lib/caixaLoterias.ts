@@ -17,16 +17,18 @@ export interface ResultadoOficialMega {
 }
 
 interface RateioOficial {
-  faixa?: number
+  faixa?: number | string
   descricaoFaixa?: string
   numeroDeGanhadores?: number
+  quantidadeGanhadores?: number
+  ganhadores?: number
 }
 
 interface PayloadOficial {
   numero?: number
   dataApuracao?: string
   listaDezenas?: string[]
-  acumulado?: boolean
+  acumulado?: boolean | string | number
   listaRateioPremio?: RateioOficial[]
   numeroConcursoProximo?: number
   dataProximoConcurso?: string
@@ -41,11 +43,13 @@ function parseDezenas(lista: string[] | undefined): number[] {
 }
 
 function ganhadoresFaixaSena(rateio: RateioOficial[] | undefined): number {
-  const sena = (rateio ?? []).find(
-    (faixa) => faixa.faixa === 1 || String(faixa.descricaoFaixa ?? '').includes('6 acertos'),
-  )
-  const n = sena?.numeroDeGanhadores
-  return typeof n === 'number' && n >= 0 ? n : 0
+  const lista = rateio ?? []
+  const sena =
+    lista.find((faixa) => Number(faixa.faixa) === 1) ??
+    lista.find((faixa) => /6\s*acertos/i.test(String(faixa.descricaoFaixa ?? '')))
+  const n = sena?.numeroDeGanhadores ?? sena?.quantidadeGanhadores ?? sena?.ganhadores
+  const parsed = Number(n)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0
 }
 
 export function parseResultadoOficial(raw: unknown): ResultadoOficialMega | null {
@@ -56,8 +60,7 @@ export function parseResultadoOficial(raw: unknown): ResultadoOficialMega | null
   const dezenas = parseDezenas(d.listaDezenas)
   if (!numero || !data || dezenas.length !== 6) return null
   const ganhadoresSena = ganhadoresFaixaSena(d.listaRateioPremio)
-  /** Campo oficial da Caixa: true = prêmio acumulou (sem ganhador da Sena). */
-  const acumulado = d.acumulado === true
+  const acumulado = ganhadoresSena === 0
   return {
     numero,
     data,
@@ -71,14 +74,25 @@ export function parseResultadoOficial(raw: unknown): ResultadoOficialMega | null
 }
 
 async function getJson(url: string): Promise<unknown> {
-  const resp = await fetch(url, { headers: { Accept: 'application/json' } })
+  const resp = await fetch(url, { cache: 'no-store', credentials: 'omit' })
   if (!resp.ok) throw new Error(`Caixa HTTP ${resp.status}`)
   return resp.json()
 }
 
 export async function buscarUltimoResultadoOficial(): Promise<ResultadoOficialMega | null> {
   try {
-    return parseResultadoOficial(await getJson(`${CAIXA_MEGASENA_API}/`))
+    const vivo = parseResultadoOficial(await getJson(`${CAIXA_MEGASENA_API}/`))
+    if (vivo) return vivo
+  } catch {
+    /* tenta o snapshot gerado no build */
+  }
+  try {
+    const resp = await fetch(`${import.meta.env.BASE_URL}ultimo-oficial.json`, {
+      cache: 'no-store',
+      credentials: 'omit',
+    })
+    if (!resp.ok) return null
+    return parseResultadoOficial(await resp.json())
   } catch {
     return null
   }

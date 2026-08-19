@@ -4,6 +4,27 @@ import { neon } from '@neondatabase/serverless'
 
 const DATABASE_URL = process.env.DATABASE_URL
 const OUT = path.resolve('public', 'concursos.json')
+const CAIXA = 'https://servicebus2.caixa.gov.br/portaldeloterias/api/megasena'
+
+await mkdir(path.resolve('public'), { recursive: true })
+try {
+  const resp = await fetch(`${CAIXA}/`, {
+    headers: {
+      Accept: 'application/json',
+      'User-Agent':
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+      Referer: 'https://loterias.caixa.gov.br/',
+    },
+  })
+  if (resp.ok) {
+    const ultimo = await resp.json()
+    const outUltimo = path.resolve('public', 'ultimo-oficial.json')
+    await writeFile(outUltimo, `${JSON.stringify(ultimo)}\n`, 'utf8')
+    console.log(`Último concurso oficial gravado em ${outUltimo} (${ultimo.numero}).`)
+  }
+} catch (error) {
+  console.warn('Não foi possível gravar ultimo-oficial.json:', error)
+}
 
 if (!DATABASE_URL) {
   if (process.env.SKIP_IF_NO_URL === '1') {

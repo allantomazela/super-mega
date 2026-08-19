@@ -11,6 +11,7 @@
     <link rel="apple-touch-icon" href="%BASE_URL%favicon.svg" />
     <meta property="og:image" content="%BASE_URL%favicon.svg" />
     <!-- auth-cors-v2: never send neon_auth_session_verifier as a request header -->
+    <!-- caixa-oficial-v3: last draw uses Caixa API with credentials omit -->
   </head>
 
   <body>
@@ -49,8 +50,14 @@
             } catch (e) {}
           }
           init.headers = headers
-          init.credentials = init.credentials || 'include'
           var url = typeof input === 'string' ? input : input && input.url
+          var isNeonAuth =
+            url &&
+            (String(url).indexOf('neonauth') !== -1 ||
+              String(url).indexOf('get-session') !== -1 ||
+              String(url).indexOf('/auth/') !== -1)
+          if (isNeonAuth) init.credentials = init.credentials || 'include'
+          else if (!init.credentials) init.credentials = 'omit'
           if (token && url && url.indexOf('get-session') !== -1) {
             var parsed = new URL(url, location.origin)
             if (!parsed.searchParams.get(P)) parsed.searchParams.set(P, token)
