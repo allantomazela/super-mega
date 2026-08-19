@@ -7,11 +7,14 @@ const BATCH = 200
 const full = process.argv.includes('--full')
 
 if (!DATABASE_URL) {
+  const secretName = process.env.REQUIRED_SECRET || 'DATABASE_URL'
   if (process.env.SKIP_IF_NO_URL === '1') {
-    console.log('DATABASE_URL ausente. Pulando sincronização.')
+    console.log(
+      `Secret ${secretName} ausente. Pulando sincronização. Cadastre-o em Settings → Secrets and variables → Actions.`,
+    )
     process.exit(0)
   }
-  console.error('DATABASE_URL ausente. Use: pnpm db:sync-concursos')
+  console.error(`Secret ${secretName} ausente. Use: pnpm db:sync-concursos`)
   process.exit(1)
 }
 

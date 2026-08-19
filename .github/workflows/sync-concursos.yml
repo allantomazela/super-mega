@@ -23,6 +23,8 @@ jobs:
       - name: Atualizar histórico oficial
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          REQUIRED_SECRET: DATABASE_URL
+          SKIP_IF_NO_URL: '1'
         run: node scripts/sync-concursos-neon.mjs
 
   sync-dev:
@@ -41,5 +43,6 @@ jobs:
       - name: Atualizar histórico oficial
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL_DEV }}
+          REQUIRED_SECRET: DATABASE_URL_DEV
           SKIP_IF_NO_URL: '1'
         run: node scripts/sync-concursos-neon.mjs
