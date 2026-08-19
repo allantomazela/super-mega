@@ -251,28 +251,7 @@ export default function Resultados() {
     const day = String(now.getDate()).padStart(2, '0')
     const month = String(now.getMonth() + 1).padStart(2, '0')
     const year = now.getFullYear()
-    const hours = String(now.getHours()).padStart(2, '0')
-    const minutes = String(now.getMinutes()).padStart(2, '0')
-    const dateFormatted = `${day}/${month}/${year}`
-
-    const header = [
-      `# ==========================================================`,
-      `# Otimizador Estratégico Mega-Sena — Jogos Gerados`,
-      `# Data de Geração: ${dateFormatted} às ${hours}:${minutes}`,
-      `# Dezenas do Grupo (${selectedNumbers.length}): ${selectedNumbers.map(formatTwoDigits).join(', ')}`,
-      `# Combinações Brutas: ${formatNumberBR(totalRaw)} | Jogos Filtrados: ${formatNumberBR(scoreFilteredCombinations.length)}`,
-      `# Economia Gerada: ${formatCurrencyBRL(scoreFilteredEconomy)} | Custo Total: ${formatCurrencyBRL(scoreFilteredCost)}`,
-      `# Filtros Ativos: ${Object.entries(filters)
-        .filter(([, v]) => v)
-        .map(([k]) => k)
-        .join(', ')}${minScore > 0 ? `, scoreMin=${minScore}` : ''}`,
-      `# ==========================================================`,
-      ``,
-    ].join('\n')
-
-    const body = buildJogosTxtCaixa(scoreFilteredCombinations).trim()
-
-    const fileContent = `${header}\n${body}\n`
+    const fileContent = buildJogosTxtCaixa(scoreFilteredCombinations)
 
     const blob = new Blob([fileContent], { type: 'text/plain;charset=utf-8' })
     const url = URL.createObjectURL(blob)
