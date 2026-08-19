@@ -31,6 +31,8 @@ import { GameScoreRadar } from '@/components/RadarChart'
 import { HistoricoConferencias } from '@/components/HistoricoConferencias'
 import { useHistoricoConferencias } from '@/hooks/useHistoricoConferencias'
 import { useToast } from '@/hooks/use-toast'
+import { SeletorAleatorias } from '@/components/SeletorAleatorias'
+import { MEGA_MAX_DEZENAS, MEGA_MIN_DEZENAS } from '@/lib/caixaOficial'
 
 /* ============================================================
  * TorneioMode — compara dois grupos de dezenas (Grupo A e
@@ -65,6 +67,7 @@ export const TorneioMode: React.FC = () => {
   })
   const [ativo, setAtivo] = useState<GrupoId>('A')
   const [copied, setCopied] = useState<{ grupo: GrupoId; idx: number } | null>(null)
+  const [qtdAleatorias, setQtdAleatorias] = useState(10)
   const { toast } = useToast()
   const { historico, adicionar, limpar } = useHistoricoConferencias()
   const { concursos } = useConcursos()
@@ -88,12 +91,13 @@ export const TorneioMode: React.FC = () => {
   }
 
   const randomFill = (grupo: GrupoId, total: number) => {
+    const capped = Math.min(MAX_SELECTION, Math.max(MEGA_MIN_DEZENAS, Math.min(MEGA_MAX_DEZENAS, total)))
     const all = Array.from({ length: 60 }, (_, i) => i + 1)
     for (let i = all.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1))
       ;[all[i], all[j]] = [all[j], all[i]]
     }
-    const chosen = all.slice(0, total).sort((a, b) => a - b)
+    const chosen = all.slice(0, capped).sort((a, b) => a - b)
     setGrupos((prev) => ({ ...prev, [grupo]: { selected: chosen, result: null } }))
   }
 
@@ -185,19 +189,15 @@ export const TorneioMode: React.FC = () => {
             Monte dois grupos independentes e compare-os lado a lado. Quem leva a melhor?
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              randomFill('A', 12)
-              randomFill('B', 12)
+        <div className="flex items-start gap-2">
+          <SeletorAleatorias
+            quantidade={qtdAleatorias}
+            onQuantidadeChange={setQtdAleatorias}
+            onGerar={(n) => {
+              randomFill('A', n)
+              randomFill('B', n)
             }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1a1f2b] border border-[#262c34] text-xs text-zinc-300 hover:text-white hover:border-zinc-600 transition-colors"
-            title="Sortear 12 dezenas aleatórias para cada grupo"
-          >
-            <Dices className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Sortear ambos</span>
-          </button>
+          />
           <button
             type="button"
             onClick={() => {
@@ -223,7 +223,7 @@ export const TorneioMode: React.FC = () => {
             onFocus={() => setAtivo(gid)}
             onToggle={(n) => toggleNumber(gid, n)}
             onClear={() => clearGrupo(gid)}
-            onRandom={() => randomFill(gid, 12)}
+            onRandom={() => randomFill(gid, qtdAleatorias)}
             onGerar={() => gerarJogos(gid)}
             onCopy={(game, idx) => copyGame(gid, game, idx)}
             copiedIdx={copied?.grupo === gid ? copied.idx : null}
@@ -498,7 +498,7 @@ const GrupoPanel: React.FC<{
             type="button"
             onClick={onRandom}
             className="px-2.5 py-1.5 rounded-lg bg-[#1a1f2b] border border-[#262c34] text-[11px] text-zinc-300 hover:text-white hover:border-zinc-600 transition-colors flex items-center gap-1"
-            title="Sortear 12 dezenas aleatórias"
+            title="Sortear dezenas aleatórias na quantidade escolhida no topo"
           >
             <Dices className="w-3 h-3 text-emerald-400" />
             Aleatório

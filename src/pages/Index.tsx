@@ -11,7 +11,6 @@ import {
   RotateCcw,
   CheckCircle2,
   Info,
-  Dices,
   Target,
   Download,
   Copy,
@@ -48,15 +47,12 @@ import {
   calcularEVConjunto,
   calcularEVPorReal,
   probExataMegaSena,
-  FIVE_GAMES_MIN_SELECTION,
   FIVE_GAMES_MAX_SELECTION,
-  PRICE_PER_GAME,
   FiveGamesResult,
   OptimizationMeta,
   META_WEIGHTS,
   DEFAULT_META,
   coverageEfficiency,
-  FIVE_GAMES_SIZE,
 } from '@/lib/megaEngine'
 import { estimatePopularityFactor } from '@/lib/popularityModel'
 import { ToggleSwitch } from '@/components/ToggleSwitch'
@@ -72,6 +68,13 @@ import { ModeGuide } from '@/components/ModeGuide'
 import { VolanteOficial } from '@/components/VolanteOficial'
 import { UltimoSorteio } from '@/components/UltimoSorteio'
 import { FechamentoJogos } from '@/components/FechamentoJogos'
+import { SeletorAleatorias } from '@/components/SeletorAleatorias'
+import {
+  MEGA_MAX_DEZENAS,
+  MEGA_MIN_DEZENAS,
+  clampDezenasMega,
+  precoOficialCaixa,
+} from '@/lib/caixaOficial'
 import { useConcursos } from '@/hooks/useConcursos'
 import { useToast } from '@/hooks/use-toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -115,6 +118,8 @@ export default function Index() {
   const [exported, setExported] = useState(false)
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
   const [meta, setMeta] = useState<OptimizationMeta>(DEFAULT_META)
+  const [qtdAleatorias, setQtdAleatorias] = useState(10)
+  const [ticketSize, setTicketSize] = useState(MEGA_MIN_DEZENAS)
 
   const count = selectedNumbers.length
 
@@ -132,9 +137,9 @@ export default function Index() {
   }, [editableGames, selectedNumbers, fiveGamesResult])
 
   // === Limites dinâmicos conforme o modo ativo ===
-  const minRequired = isCincoJogos ? FIVE_GAMES_MIN_SELECTION : 6
+  const minRequired = isCincoJogos ? ticketSize : 6
   const isValidCount = isCincoJogos
-    ? count >= FIVE_GAMES_MIN_SELECTION && count <= FIVE_GAMES_MAX_SELECTION
+    ? count >= ticketSize && count <= FIVE_GAMES_MAX_SELECTION
     : isFechamento
       ? count === 10
       : count >= 6 && count <= 20
@@ -144,7 +149,7 @@ export default function Index() {
       ? count > 10
       : count > 20
   const isUnderLimit = isCincoJogos
-    ? count < FIVE_GAMES_MIN_SELECTION
+    ? count < ticketSize
     : isFechamento
       ? count < 10
       : count < 6
@@ -184,11 +189,11 @@ export default function Index() {
   }
 
   const handleGenerateFiveGames = () => {
-    if (count < FIVE_GAMES_MIN_SELECTION || count > FIVE_GAMES_MAX_SELECTION) return
+    if (count < ticketSize || count > FIVE_GAMES_MAX_SELECTION) return
     setIsLoading(true)
     setExported(false)
     setTimeout(() => {
-      const result = optimizeFiveGamesV3(selectedNumbers, meta, freqMap)
+      const result = optimizeFiveGamesV3(selectedNumbers, meta, freqMap, ticketSize)
       setFiveGamesResult(result)
       setEditableGames(result.games.map((g) => [...g]))
       setIsLoading(false)
@@ -207,10 +212,10 @@ export default function Index() {
   const handleMetaChange = (next: OptimizationMeta) => {
     if (next === meta) return
     setMeta(next)
-    if (fiveGamesResult && count >= FIVE_GAMES_MIN_SELECTION && count <= FIVE_GAMES_MAX_SELECTION) {
+    if (fiveGamesResult && count >= ticketSize && count <= FIVE_GAMES_MAX_SELECTION) {
       setIsLoading(true)
       setTimeout(() => {
-        const result = optimizeFiveGamesV3(selectedNumbers, next, freqMap)
+        const result = optimizeFiveGamesV3(selectedNumbers, next, freqMap, ticketSize)
         setFiveGamesResult(result)
         setEditableGames(result.games.map((g) => [...g]))
         setIsLoading(false)
@@ -225,12 +230,16 @@ export default function Index() {
 
   // Quick helper to fill a random sample of N numbers
   const handleRandomSelect = (total: number) => {
+    const capped = Math.min(
+      maxSelection,
+      Math.max(MEGA_MIN_DEZENAS, Math.min(MEGA_MAX_DEZENAS, total)),
+    )
     const all = Array.from({ length: 60 }, (_, i) => i + 1)
     for (let i = all.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1))
       ;[all[i], all[j]] = [all[j], all[i]]
     }
-    const chosen = all.slice(0, total).sort((a, b) => a - b)
+    const chosen = all.slice(0, capped).sort((a, b) => a - b)
     setSelectedNumbers(chosen)
     if (isCincoJogos) {
       setFiveGamesResult(null)
@@ -275,7 +284,7 @@ export default function Index() {
   const handleDragStart = (fromIdx: number, num: number) => {
     // Bloqueia saída se o bilhete de origem ficaria com menos de 5 dezenas
     const jogoOrigem = editableGames?.[fromIdx] ?? []
-    if (jogoOrigem.length <= FIVE_GAMES_SIZE) {
+    if (jogoOrigem.length <= MEGA_MIN_DEZENAS) {
       setInvalidDropIdx(fromIdx)
       setTimeout(() => setInvalidDropIdx(null), 600)
       return
@@ -288,7 +297,7 @@ export default function Index() {
     if (dragInfo && dragInfo.fromIdx === toIdx) return
     const jogoDestino = editableGames?.[toIdx] ?? []
     // Só marca como drop válido se houver espaço (≤ 5)
-    if (jogoDestino.length < FIVE_GAMES_SIZE) {
+    if (jogoDestino.length < ticketSize) {
       setDragOverIdx(toIdx)
     } else {
       setInvalidDropIdx(toIdx)
@@ -316,7 +325,7 @@ export default function Index() {
 
     const jogoDestino = editableGames[toIdx]
     // Bloqueia se destino já tem 5 dezenas
-    if (jogoDestino.length >= FIVE_GAMES_SIZE) {
+    if (jogoDestino.length >= ticketSize) {
       setInvalidDropIdx(toIdx)
       setTimeout(() => setInvalidDropIdx(null), 600)
       setDragInfo(null)
@@ -342,12 +351,14 @@ export default function Index() {
     setDragOverIdx(null)
   }
 
-  // Restaura os 5 jogos originais otimizados (antes das edições manuais)
   const handleResetJogos = () => {
-    if (!fiveGamesResult) return
-    setEditableGames(fiveGamesResult.games.map((g) => [...g]))
+    setFiveGamesResult(null)
+    setEditableGames(null)
+    setExported(false)
+    setCopiedIndex(null)
     setDragInfo(null)
     setDragOverIdx(null)
+    setInvalidDropIdx(null)
   }
 
   // === Reset completo: limpa dezenas, filtros, resultado 5 jogos e meta ===
@@ -361,6 +372,26 @@ export default function Index() {
     setDragInfo(null)
     setDragOverIdx(null)
     setInvalidDropIdx(null)
+    setTicketSize(MEGA_MIN_DEZENAS)
+    setQtdAleatorias(10)
+  }
+
+  function handleTicketSizeChange(next: number) {
+    const k = clampDezenasMega(next)
+    setTicketSize(k)
+    if (count < k) {
+      setFiveGamesResult(null)
+      setEditableGames(null)
+      return
+    }
+    if (!fiveGamesResult) return
+    setIsLoading(true)
+    setTimeout(() => {
+      const result = optimizeFiveGamesV3(selectedNumbers, meta, freqMap, k)
+      setFiveGamesResult(result)
+      setEditableGames(result.games.map((g) => [...g]))
+      setIsLoading(false)
+    }, 250)
   }
 
   const handleModeChange = (next: AppMode) => {
@@ -398,26 +429,21 @@ export default function Index() {
               </h1>
               <p className="text-sm sm:text-base text-zinc-400 mt-1">
                 {isCincoJogos
-                  ? `Selecione de ${FIVE_GAMES_MIN_SELECTION} a ${FIVE_GAMES_MAX_SELECTION} dezenas e gere 5 jogos oficiais de 6 dezenas.`
+                  ? `Selecione de ${ticketSize} a ${FIVE_GAMES_MAX_SELECTION} dezenas e gere 5 jogos oficiais de ${ticketSize} dezenas.`
                   : isFechamento
                     ? 'Selecione exatamente 10 dezenas para o fechamento ótimo de 14 jogos (garantia de Quina).'
                     : 'Selecione entre 6 e 20 dezenas (limite oficial da Caixa) e aplique os filtros.'}
               </p>
             </div>
 
-            {/* Quick actions: Surpresinha + Resetar Tudo */}
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => handleRandomSelect(isCincoJogos ? 12 : 10)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1a1f2b] border border-[#262c34] text-xs text-zinc-300 hover:text-white hover:border-zinc-600 transition-colors"
-                title={
-                  isCincoJogos ? 'Sortear 12 dezenas aleatórias' : 'Sortear 10 dezenas aleatórias'
-                }
-              >
-                <Dices className="w-3.5 h-3.5 text-emerald-400" />
-                <span>{isCincoJogos ? 'Gerar 12 aleatórias' : 'Gerar 10 aleatórias'}</span>
-              </button>
+            {/* Quick actions: Surpresinha (6–20, padrão Caixa) + Resetar Tudo */}
+            <div className="flex items-start gap-2">
+              <SeletorAleatorias
+                quantidade={qtdAleatorias}
+                onQuantidadeChange={setQtdAleatorias}
+                onGerar={handleRandomSelect}
+                travadoEm={isFechamento ? 10 : undefined}
+              />
               <button
                 type="button"
                 onClick={handleResetAll}
@@ -535,7 +561,7 @@ export default function Index() {
                       </div>
                       <p className="text-xs text-zinc-400 mt-0.5">
                         {isCincoJogos
-                          ? `Mínimo ${FIVE_GAMES_MIN_SELECTION} e máximo ${FIVE_GAMES_MAX_SELECTION} dezenas para otimização de cobertura.`
+                          ? `Mínimo ${ticketSize} e máximo ${FIVE_GAMES_MAX_SELECTION} dezenas para otimização de cobertura.`
                           : isFechamento
                             ? 'Exatamente 10 dezenas para o fechamento L(10,6,6,5).'
                             : 'Mínimo 6 e máximo 20 dezenas (volante oficial da Mega-Sena).'}
@@ -580,6 +606,7 @@ export default function Index() {
                   dragInfo={dragInfo}
                   dragOverIdx={dragOverIdx}
                   invalidDropIdx={invalidDropIdx}
+                  ticketSize={ticketSize}
                 />
               )}
               {isCincoJogos && liveResult && <ProbabilisticAnalysis result={liveResult} />}
@@ -616,6 +643,8 @@ export default function Index() {
                   result={liveResult}
                   meta={meta}
                   onMetaChange={handleMetaChange}
+                  ticketSize={ticketSize}
+                  onTicketSizeChange={handleTicketSizeChange}
                 />
               ) : isFechamento ? (
                 <FechamentoPanel dezenas={selectedNumbers} />
@@ -855,7 +884,21 @@ const FiveGamesPanel: React.FC<{
   result: FiveGamesResult | null
   meta: OptimizationMeta
   onMetaChange: (m: OptimizationMeta) => void
-}> = ({ count, isValidCount, isUnderLimit, isLoading, onGenerate, result, meta, onMetaChange }) => (
+  ticketSize: number
+  onTicketSizeChange: (n: number) => void
+}> = ({
+  count,
+  isValidCount,
+  isUnderLimit,
+  isLoading,
+  onGenerate,
+  result,
+  meta,
+  onMetaChange,
+  ticketSize,
+  onTicketSizeChange,
+}) => (
+
   <div className="surface-card rounded-2xl p-5 sm:p-6 shadow-xl relative overflow-hidden flex flex-col justify-between">
     <div className="space-y-5">
       {/* Header */}
@@ -867,7 +910,7 @@ const FiveGamesPanel: React.FC<{
           <h2 className="text-lg font-bold text-white tracking-tight">Otimizador de Cobertura</h2>
         </div>
         <p className="text-xs text-zinc-400 mt-1.5">
-          Gera 5 jogos de 6 dezenas maximizando a cobertura do grupo
+          Gera 5 jogos de {ticketSize} dezenas maximizando a cobertura do grupo
         </p>
       </div>
 
@@ -881,12 +924,37 @@ const FiveGamesPanel: React.FC<{
             <div>
               <span className="text-sm font-semibold text-white">Como funciona</span>
               <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
-                As dezenas selecionadas são distribuídas em 5 jogos oficiais de 6 dezenas. O
-                algoritmo prioriza cobrir o máximo do grupo e equilibrar a repetição.
+                As dezenas selecionadas são distribuídas em 5 jogos oficiais de {ticketSize}{' '}
+                dezenas (padrão Caixa: 6 a 20). O algoritmo prioriza cobrir o máximo do grupo.
               </p>
             </div>
           </div>
         </div>
+
+        <label className="flex flex-col gap-1.5 p-3.5 rounded-xl bg-[#161a1f] border border-[#262c34]">
+          <span className="text-xs font-semibold text-zinc-300">Dezenas por jogo</span>
+          <div className="flex items-center justify-between gap-2">
+            <select
+              value={ticketSize}
+              onChange={(e) => onTicketSizeChange(Number(e.target.value))}
+              aria-label="Quantidade de dezenas em cada um dos 5 jogos (6 a 20)"
+              className="h-9 rounded-lg bg-[#1a1f2b] border border-[#262c34] text-sm text-zinc-200 px-2 pr-8 focus:outline-none focus:border-emerald-500/60"
+            >
+              {Array.from({ length: MEGA_MAX_DEZENAS - MEGA_MIN_DEZENAS + 1 }, (_, i) => i + MEGA_MIN_DEZENAS).map(
+                (n) => (
+                  <option key={n} value={n}>
+                    {n} dezenas
+                  </option>
+                ),
+              )}
+            </select>
+            <span className="text-[11px] text-zinc-500 text-right leading-tight">
+              5 × {formatCurrencyBRL(precoOficialCaixa(ticketSize))}
+              <br />
+              {formatCurrencyBRL(5 * precoOficialCaixa(ticketSize))}
+            </span>
+          </div>
+        </label>
 
         {/* Controle de Meta de Otimização */}
         <OptimizationMetaControl meta={meta} onChange={onMetaChange} />
@@ -949,7 +1017,7 @@ const FiveGamesPanel: React.FC<{
         {isUnderLimit && (
           <span className="text-amber-400/80 flex items-center gap-1">
             <Info className="w-3 h-3" />
-            Selecione ao menos {FIVE_GAMES_MIN_SELECTION}
+            Selecione ao menos {ticketSize}
           </span>
         )}
       </div>
@@ -1092,6 +1160,7 @@ const FiveGamesResultSection: React.FC<{
   dragInfo: { fromIdx: number; num: number } | null
   dragOverIdx: number | null
   invalidDropIdx: number | null
+  ticketSize: number
 }> = ({
   result,
   editableGames,
@@ -1109,6 +1178,7 @@ const FiveGamesResultSection: React.FC<{
   dragInfo,
   dragOverIdx,
   invalidDropIdx,
+  ticketSize,
 }) => {
   return (
     <div className="space-y-6 animate-fade-in-up">
@@ -1122,7 +1192,7 @@ const FiveGamesResultSection: React.FC<{
             <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
               5 Jogos Otimizados
               <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#1a1f2b] border border-[#262c34] text-emerald-400">
-                5 jogos × 6 dezenas
+                5 jogos × {ticketSize} dezenas
               </span>
             </h2>
             <p className="text-xs text-zinc-400">
@@ -1136,7 +1206,7 @@ const FiveGamesResultSection: React.FC<{
             type="button"
             onClick={onReset}
             className="px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 font-bold text-sm bg-[#1a1f2b] text-zinc-300 border border-[#262c34] hover:text-white hover:border-emerald-500/50 hover:bg-[#202735] active:scale-[0.98] transition-all"
-            title="Restaurar os 5 jogos originais otimizados"
+            title="Limpar os 5 jogos gerados e voltar à seleção"
           >
             <RotateCcw className="w-4 h-4 text-emerald-400" />
             <span>Resetar Jogos</span>
@@ -1210,7 +1280,7 @@ const FiveGamesResultSection: React.FC<{
           </div>
         </div>
         <AverageScoreCard scores={result.scores} highlight={meta === 'score' || meta === 'elite'} />
-        <SchonheimCard groupSize={result.groupSize} />
+        <SchonheimCard groupSize={result.groupSize} ticketSize={ticketSize} />
       </div>
 
       {/* Cards dos 5 jogos — chips arrastáveis */}
@@ -1219,7 +1289,7 @@ const FiveGamesResultSection: React.FC<{
           const isCopied = copiedIndex === idx
           const isDragOver = dragOverIdx === idx
           const isInvalid = invalidDropIdx === idx
-          const isFull = game.length >= 5
+          const isFull = game.length >= ticketSize
           return (
             <div
               key={idx}
@@ -1250,7 +1320,7 @@ const FiveGamesResultSection: React.FC<{
                   <Sparkles className="w-3 h-3 text-emerald-400" />
                   Jogo #{String(idx + 1).padStart(2, '0')}
                   <span className="text-[10px] text-zinc-500 font-normal ml-1">
-                    ({game.length}/5)
+                    ({game.length}/{ticketSize})
                   </span>
                 </span>
                 <button
@@ -1388,7 +1458,7 @@ const FiveGameScoreBar: React.FC<{ game: number[] }> = ({ game }) => {
           style={{ width: `${score}%` }}
         />
       </div>
-      * Card "Score Médio" — média dos 5 scores com cor correspondente =======
+      {/* Card "Score Médio" — média dos 5 scores com cor correspondente */}
       <div className={`text-[10px] font-bold ${textColor}`}>
         {label}
         {isElite && (
@@ -1416,8 +1486,11 @@ const FiveGameScoreBar: React.FC<{ game: number[] }> = ({ game }) => {
 /* ============================================================
  * Card "Eficiência Schönheim" — proximidade do limite teórico
  * ============================================================ */
-const SchonheimCard: React.FC<{ groupSize: number }> = ({ groupSize }) => {
-  const eficiencia = coverageEfficiency(groupSize, FIVE_GAMES_COUNT, FIVE_GAMES_SIZE, 2)
+const SchonheimCard: React.FC<{ groupSize: number; ticketSize: number }> = ({
+  groupSize,
+  ticketSize,
+}) => {
+  const eficiencia = coverageEfficiency(groupSize, FIVE_GAMES_COUNT, ticketSize, 2)
   const colorClass =
     eficiencia >= 60 ? 'text-emerald-400' : eficiencia >= 30 ? 'text-amber-400' : 'text-orange-400'
 

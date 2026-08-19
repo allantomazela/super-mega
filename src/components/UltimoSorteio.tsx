@@ -1,70 +1,47 @@
 import { useEffect, useState } from 'react'
 import { Trophy } from 'lucide-react'
-import { useConcursos } from '@/hooks/useConcursos'
 import { formatTwoDigits } from '@/lib/megaEngine'
-
-const API_LATEST = 'https://loteriascaixa-api.herokuapp.com/api/megasena/latest'
-
-interface UltimoInfo {
-  numero: number
-  data: string
-  dezenas: number[]
-  acumulou?: boolean
-  proximo?: number
-  dataProximo?: string
-  estimado?: number
-}
+import {
+  buscarUltimoResultadoOficial,
+  CAIXA_RESULTADOS_URL,
+  type ResultadoOficialMega,
+} from '@/lib/caixaLoterias'
 
 export function UltimoSorteio() {
-  const { concursos } = useConcursos()
-  const [info, setInfo] = useState<UltimoInfo | null>(null)
+  const [info, setInfo] = useState<ResultadoOficialMega | null>(null)
+  const [falhou, setFalhou] = useState(false)
 
   useEffect(() => {
     let cancelado = false
     void (async () => {
-      try {
-        const resp = await fetch(API_LATEST)
-        if (!resp.ok) return
-        const d = (await resp.json()) as {
-          concurso?: number
-          numero?: number
-          data?: string
-          dezenas?: string[]
-          acumulou?: boolean
-          proximoConcurso?: number
-          dataProximoConcurso?: string
-          valorEstimadoProximoConcurso?: number
-        }
-        const numero = d.concurso ?? d.numero
-        const dezenas = (d.dezenas ?? [])
-          .map((x) => parseInt(x, 10))
-          .filter((n) => n >= 1 && n <= 60)
-          .sort((a, b) => a - b)
-        if (!numero || !d.data || dezenas.length !== 6 || cancelado) return
-        setInfo({
-          numero,
-          data: d.data,
-          dezenas,
-          acumulou: d.acumulou,
-          proximo: d.proximoConcurso,
-          dataProximo: d.dataProximoConcurso,
-          estimado: d.valorEstimadoProximoConcurso,
-        })
-      } catch {
-        /* usa fallback do histórico */
-      }
+      const oficial = await buscarUltimoResultadoOficial()
+      if (cancelado) return
+      if (oficial) setInfo(oficial)
+      else setFalhou(true)
     })()
     return () => {
       cancelado = true
     }
   }, [])
 
-  const base = concursos[0]
-  const atual: UltimoInfo | null = info ?? (base
-    ? { numero: base.numero, data: base.data, dezenas: base.dezenas }
-    : null)
+  if (!info) {
+    if (!falhou) return null
+    return (
+      <section className="rounded-2xl border border-amber-500/25 bg-[#12161b] px-4 py-3 text-xs text-amber-200">
+        Não foi possível consultar o resultado oficial da Caixa.{' '}
+        <a
+          href={CAIXA_RESULTADOS_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline text-emerald-300"
+        >
+          Ver no site das Loterias
+        </a>
+      </section>
+    )
+  }
 
-  if (!atual) return null
+  const senaGanha = !info.acumulado && info.ganhadoresSena > 0
 
   return (
     <section className="rounded-2xl border border-emerald-500/25 bg-[#12161b] px-4 py-3 sm:px-5">
@@ -74,13 +51,13 @@ export function UltimoSorteio() {
           <div>
             <div className="text-[10px] uppercase tracking-wide text-zinc-500">Último sorteio</div>
             <div className="text-sm font-bold text-white">
-              Concurso {atual.numero}
-              <span className="ml-2 font-medium text-zinc-400">{atual.data}</span>
+              Concurso {info.numero}
+              <span className="ml-2 font-medium text-zinc-400">{info.data}</span>
             </div>
           </div>
         </div>
         <div className="flex flex-wrap gap-1.5">
-          {atual.dezenas.map((n) => (
+          {info.dezenas.map((n) => (
             <span
               key={n}
               className="w-8 h-8 rounded-full emerald-gradient text-white text-xs font-bold flex items-center justify-center"
@@ -90,18 +67,28 @@ export function UltimoSorteio() {
           ))}
         </div>
         <div className="sm:ml-auto text-xs text-zinc-400">
-          {atual.acumulou ? (
-            <span className="text-amber-300 font-semibold">Acumulou</span>
+          {senaGanha ? (
+            <span className="text-emerald-300 font-semibold">
+              {info.ganhadoresSena} ganhador{info.ganhadoresSena === 1 ? '' : 'es'} da Sena
+            </span>
           ) : (
-            <span className="text-emerald-300">Houve ganhador(es) da Sena</span>
+            <span className="text-amber-300 font-semibold">Acumulou (sem ganhador da Sena)</span>
           )}
-          {atual.proximo && atual.estimado ? (
+          {info.proximo && info.estimado ? (
             <span className="block sm:inline sm:ml-2">
-              Próx. {atual.proximo}
-              {atual.dataProximo ? ` (${atual.dataProximo})` : ''}:{' '}
-              {atual.estimado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              Próx. {info.proximo}
+              {info.dataProximo ? ` (${info.dataProximo})` : ''}:{' '}
+              {info.estimado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </span>
           ) : null}
+          <a
+            href={CAIXA_RESULTADOS_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block sm:inline sm:ml-2 text-zinc-500 hover:text-emerald-300 underline-offset-2 hover:underline"
+          >
+            Fonte: Loterias Caixa
+          </a>
         </div>
       </div>
     </section>

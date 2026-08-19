@@ -1,7 +1,7 @@
 import { neon } from '@neondatabase/serverless'
 
 const DATABASE_URL = process.env.DATABASE_URL
-const CAIXA = 'https://loteriascaixa-api.herokuapp.com/api/megasena'
+const CAIXA = 'https://servicebus2.caixa.gov.br/portaldeloterias/api/megasena'
 const CONCURRENCY = 6
 const BATCH = 200
 const full = process.argv.includes('--full')
@@ -127,7 +127,7 @@ console.log('Garantindo schema public.concursos...')
 await garantirSchema(sql)
 
 console.log('Buscando último concurso oficial da Caixa...')
-const ultimo = normalizar(await fetchJson(`${CAIXA}/latest`))
+const ultimo = normalizar(await fetchJson(`${CAIXA}/`))
 if (!ultimo) {
   console.error('Não foi possível ler o último concurso da Caixa.')
   process.exit(1)

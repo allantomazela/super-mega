@@ -5,6 +5,11 @@ export const PRECO_SIMPLES_CAIXA = 6
 export const MEGA_MIN_DEZENAS = 6
 export const MEGA_MAX_DEZENAS = 20
 
+export function clampDezenasMega(n: number): number {
+  if (!Number.isFinite(n)) return MEGA_MIN_DEZENAS
+  return Math.min(MEGA_MAX_DEZENAS, Math.max(MEGA_MIN_DEZENAS, Math.round(n)))
+}
+
 export interface FaixaApostaCaixa {
   dezenas: number
   combinacoes: number

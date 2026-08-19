@@ -1,6 +1,6 @@
 import { Ticket } from 'lucide-react'
 import { formatGameCsv, formatTwoDigits } from '@/lib/megaEngine'
-import { PRECO_SIMPLES_CAIXA } from '@/lib/caixaOficial'
+import { PRECO_SIMPLES_CAIXA, precoOficialCaixa } from '@/lib/caixaOficial'
 import { useConcursos } from '@/hooks/useConcursos'
 
 interface VolanteOficialProps {
@@ -51,6 +51,8 @@ export function VolanteOficial({ jogos, label = 'Volantes oficiais' }: VolanteOf
       const b = jogos[i + 1]
       const nFolha = Math.floor(i / 2) + 1
       const totalFolhas = Math.ceil(jogos.length / 2)
+      const nDezenas = a?.length ?? 6
+      const preco = precoOficialCaixa(nDezenas)
       folhas.push(`<article class="volante">
         <div class="marcas"><i></i><i></i><i></i></div>
         <div class="topo">
@@ -58,8 +60,8 @@ export function VolanteOficial({ jogos, label = 'Volantes oficiais' }: VolanteOf
           <div class="faixa">MEGA-SENA</div>
           <p class="aviso">MODELO PARA MARCAÇÃO — não substitui o volante oficial da Caixa</p>
           <div class="meta">
-            <span>Concurso ${proximo} · 6 números</span>
-            <span>Valor: R$ ${PRECO_SIMPLES_CAIXA.toFixed(2).replace('.', ',')}</span>
+            <span>Concurso ${proximo} · ${nDezenas} números</span>
+            <span>Valor: R$ ${preco.toFixed(2).replace('.', ',')}</span>
           </div>
         </div>
         ${blocoJogo('A', a)}

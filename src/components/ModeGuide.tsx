@@ -20,10 +20,10 @@ const MODES: {
   {
     key: 'cinco-jogos',
     label: '5 Jogos',
-    hint: '5 jogos oficiais de 6',
+    hint: '5 jogos oficiais de 6 a 20',
     icon: Target,
-    how: 'Gera 5 apostas simples oficiais da Mega-Sena (6 dezenas cada) a partir do seu grupo, buscando cobertura e score. São 5 volantes prontos para a lotérica.',
-    when: 'Use quando quiser poucos jogos de 6 dezenas, bem distribuídos, sem gastar o desdobramento completo.',
+    how: 'Gera 5 apostas oficiais da Mega-Sena a partir do seu grupo. Você escolhe de 6 a 20 dezenas em cada jogo (volante da Caixa). Com 6 é aposta simples; com 7 a 20 é desdobramento no mesmo bilhete, com o preço oficial.',
+    when: 'Use quando quiser poucos volantes prontos, simples ou múltiplos, sem gastar o desdobramento completo do grupo.',
   },
   {
     key: 'torneio',

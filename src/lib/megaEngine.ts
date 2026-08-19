@@ -34,6 +34,7 @@ import {
   popularidadeLabel,
   calculateRealEVJogo,
 } from './popularityModel'
+import { clampDezenasMega, precoOficialCaixa } from './caixaOficial'
 
 /* ============================================================
  * Limite Inferior de Schönheim — Covering Designs
@@ -678,7 +679,8 @@ export function calcularProbabilidadesJogo(jogo: number[]): ProbabilidadesJogo {
  */
 export function calcularEV(jogo: number[]): number {
   const p = calcularProbabilidadesJogo(jogo)
-  return p.quadra * PRIZE_QUADRA + p.quina * PRIZE_QUINA + p.sena * PRIZE_SENA - PRICE_PER_GAME
+  const custo = precoOficialCaixa(jogo.length) || PRICE_PER_GAME
+  return p.quadra * PRIZE_QUADRA + p.quina * PRIZE_QUINA + p.sena * PRIZE_SENA - custo
 }
 
 /** Calcula o EV total de um conjunto de jogos (soma dos EVs individuais). */
@@ -688,7 +690,7 @@ export function calcularEVConjunto(jogos: number[][]): number {
 
 /** Retorna o EV por real apostado (EV / custo total). */
 export function calcularEVPorReal(jogos: number[][]): number {
-  const custo = jogos.length * PRICE_PER_GAME
+  const custo = jogos.reduce((acc, j) => acc + (precoOficialCaixa(j.length) || PRICE_PER_GAME), 0)
   if (custo === 0) return 0
   return calcularEVConjunto(jogos) / custo
 }
@@ -907,12 +909,49 @@ export function getScoreColor(score: number): ScoreColor {
  * ============================================================ */
 
 export const FIVE_GAMES_COUNT = 5
+/** Tamanho padrão (aposta simples da Caixa). O modo 5 jogos aceita 6–20. */
 export const FIVE_GAMES_SIZE = 6
 export const FIVE_GAMES_MIN_SELECTION = 6
 export const FIVE_GAMES_MAX_SELECTION = 25
 
+const MAX_FIVE_GAMES_ENUM = 8000
+const FIVE_GAMES_SAMPLE_SIZE = 5000
+
+function buildFiveGameCandidates(group: number[], k: number): number[][] {
+  const n = group.length
+  if (n < k) return []
+  if (n === k) return [[...group].sort((a, b) => a - b)]
+  const total = binomialCoefficient(n, k)
+  if (total <= MAX_FIVE_GAMES_ENUM) return generateCombinations(group, k)
+
+  const seen = new Set<string>()
+  const out: number[][] = []
+  let s = 98765
+  const rand = () => {
+    s = (s * 1103515245 + 12345) & 0x7fffffff
+    return s / 0x7fffffff
+  }
+  const target = Math.min(FIVE_GAMES_SAMPLE_SIZE, total)
+  let guard = 0
+  while (out.length < target && guard < target * 24) {
+    guard++
+    const pool = [...group]
+    const pick: number[] = []
+    for (let i = 0; i < k; i++) {
+      const idx = Math.floor(rand() * pool.length)
+      pick.push(pool.splice(idx, 1)[0])
+    }
+    pick.sort((a, b) => a - b)
+    const key = pick.join(',')
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(pick)
+  }
+  return out
+}
+
 export interface FiveGamesResult {
-  /** Os 5 jogos gerados, cada um com 6 dezenas ordenadas. */
+  /** Os 5 jogos gerados, cada um com k dezenas (6–20) ordenadas. */
   games: number[][]
   /** Dezenas do grupo que aparecem em ao menos 1 jogo. */
   covered: number[]
@@ -1222,37 +1261,25 @@ export function optimizeFiveGamesV3(
   selected: number[],
   meta: OptimizationMeta = DEFAULT_META,
   historicoFrequencias?: Map<number, number>,
+  ticketSize: number = FIVE_GAMES_SIZE,
 ): FiveGamesResult {
   const group = [...new Set(selected)].sort((a, b) => a - b)
   const groupSize = group.length
-  const totalSlots = FIVE_GAMES_COUNT * FIVE_GAMES_SIZE
-  const k = FIVE_GAMES_SIZE
+  const k = clampDezenasMega(ticketSize)
+  const totalSlots = FIVE_GAMES_COUNT * k
 
   const w = META_WEIGHTS[meta]
 
-  let candidates: number[][]
-  if (groupSize <= k) {
-    candidates = [group]
-  } else if (groupSize <= V2_MAX_FULL_COMBINATIONS) {
-    candidates = generateCombinations(group, k)
-  } else {
-    candidates = generateCombinations(group.slice(0, V2_MAX_FULL_COMBINATIONS), k)
-    const seed = 98765
-    let s = seed
-    const rand = () => {
-      s = (s * 1103515245 + 12345) & 0x7fffffff
-      return s / 0x7fffffff
-    }
-    const extra = 5000
-    for (let t = 0; t < extra; t++) {
-      const pool = [...group]
-      const pick: number[] = []
-      for (let i = 0; i < k; i++) {
-        const idx = Math.floor(rand() * pool.length)
-        pick.push(pool.splice(idx, 1)[0])
-      }
-      pick.sort((a, b) => a - b)
-      candidates.push(pick)
+  const candidates = buildFiveGameCandidates(group, k)
+  if (candidates.length === 0) {
+    return {
+      games: [],
+      covered: [],
+      uncovered: group,
+      coveragePercent: 0,
+      groupSize,
+      totalSlots,
+      scores: [],
     }
   }
 
@@ -1369,7 +1396,7 @@ export function recomputeFiveGamesResult(
 ): FiveGamesResult {
   const sortedGroup = [...new Set(group)].sort((a, b) => a - b)
   const groupSize = sortedGroup.length
-  const totalSlots = FIVE_GAMES_COUNT * FIVE_GAMES_SIZE
+  const totalSlots = games.reduce((acc, g) => acc + g.length, 0)
   const coveredSet = new Set<number>()
   games.forEach((g) => g.forEach((n) => coveredSet.add(n)))
   const covered = [...coveredSet].sort((a, b) => a - b)
@@ -1408,10 +1435,11 @@ export function buildFiveGamesExportText(result: FiveGamesResult, selected: numb
   const minutes = String(now.getMinutes()).padStart(2, '0')
 
   // Eficiência de Schönheim (cobertura t=2: garantir todos os pares)
+  const ticketK = result.games[0]?.length ?? FIVE_GAMES_SIZE
   const eficienciaSchonheim = coverageEfficiency(
     result.groupSize,
     result.games.length,
-    FIVE_GAMES_SIZE,
+    ticketK,
     2,
   )
 

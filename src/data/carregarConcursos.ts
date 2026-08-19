@@ -1,21 +1,11 @@
 import { CONCURSOS_HISTORICOS, type ConcursoHistorico } from './concursosHistoricos'
+import { buscarResultadoOficial, buscarUltimoResultadoOficial } from '@/lib/caixaLoterias'
 
 export type OrigemConcursos = 'api' | 'neon' | 'estatica'
 
 export interface ResultadoCargaConcursos {
   concursos: ConcursoHistorico[]
   origem: OrigemConcursos
-}
-
-const API_BASE = 'https://loteriascaixa-api.herokuapp.com/api/megasena'
-
-interface ApiConcurso {
-  numero?: number
-  concurso?: number
-  data?: string
-  dataApuracao?: string
-  dezenas?: string[]
-  listaDezenas?: string[]
 }
 
 interface SnapshotNeon {
@@ -29,15 +19,12 @@ function timeoutController(ms: number): AbortController {
   return controller
 }
 
-function normalizarApi(dados: ApiConcurso): ConcursoHistorico | null {
-  const numero = dados.numero ?? dados.concurso
-  const data = dados.data ?? dados.dataApuracao
-  const dezenas = (dados.dezenas ?? dados.listaDezenas ?? [])
-    .map((d) => parseInt(d, 10))
-    .filter((n) => !Number.isNaN(n))
-    .sort((a, b) => a - b)
-  if (dezenas.length !== 6 || !numero || !data) return null
-  return { numero, data, dezenas }
+function oficialParaHistorico(oficial: {
+  numero: number
+  data: string
+  dezenas: number[]
+}): ConcursoHistorico {
+  return { numero: oficial.numero, data: oficial.data, dezenas: oficial.dezenas }
 }
 
 let cacheSnapshot: ConcursoHistorico[] | null | undefined
@@ -72,31 +59,20 @@ export async function buscarConcursosDoSnapshot(): Promise<ConcursoHistorico[] |
 
 export async function buscarConcursosAoVivo(quantidade = 50): Promise<ConcursoHistorico[] | null> {
   try {
-    const latestController = timeoutController(6000)
-    const respLatest = await fetch(`${API_BASE}/latest`, { signal: latestController.signal })
-    if (!respLatest.ok) return null
-    const latest = normalizarApi((await respLatest.json()) as ApiConcurso)
+    const latest = await buscarUltimoResultadoOficial()
     if (!latest) return null
 
     const alvos: number[] = []
     for (let i = 0; i < quantidade; i++) alvos.push(latest.numero - i)
 
     const resultados: ConcursoHistorico[] = []
-    const TAMANHO_LOTE = 10
+    const TAMANHO_LOTE = 8
     for (let ini = 0; ini < alvos.length; ini += TAMANHO_LOTE) {
       const lote = alvos.slice(ini, ini + TAMANHO_LOTE)
-      const respostas = await Promise.allSettled(
-        lote.map(async (num) => {
-          const controller = timeoutController(6000)
-          const r = await fetch(`${API_BASE}/${num}`, { signal: controller.signal })
-          if (!r.ok) throw new Error(`HTTP ${r.status}`)
-          return r.json() as Promise<ApiConcurso>
-        }),
-      )
+      const respostas = await Promise.allSettled(lote.map((num) => buscarResultadoOficial(num)))
       for (const r of respostas) {
-        if (r.status !== 'fulfilled') continue
-        const item = normalizarApi(r.value)
-        if (item) resultados.push(item)
+        if (r.status !== 'fulfilled' || !r.value) continue
+        resultados.push(oficialParaHistorico(r.value))
       }
     }
 
@@ -109,35 +85,38 @@ export async function buscarConcursosAoVivo(quantidade = 50): Promise<ConcursoHi
 }
 
 export async function buscarConcursoPorNumero(numero: number): Promise<ConcursoHistorico | null> {
+  const oficial = await buscarResultadoOficial(numero)
+  if (oficial) return oficialParaHistorico(oficial)
+
   const snapshot = await buscarConcursosDoSnapshot()
   const noSnapshot = snapshot?.find((c) => c.numero === numero)
   if (noSnapshot) return noSnapshot
 
-  const local = CONCURSOS_HISTORICOS.find((c) => c.numero === numero)
-  if (local) return local
-
-  try {
-    const controller = timeoutController(8000)
-    const resp = await fetch(`${API_BASE}/${numero}`, { signal: controller.signal })
-    if (!resp.ok) return null
-    return normalizarApi((await resp.json()) as ApiConcurso)
-  } catch {
-    return null
-  }
+  return CONCURSOS_HISTORICOS.find((c) => c.numero === numero) ?? null
 }
 
 /**
- * Ordem: snapshot Neon (histórico completo) → API da Caixa → base estática.
+ * Último concurso: sempre a API oficial da Caixa.
+ * Histórico: snapshot Neon (preenchido pelo sync oficial) e, se faltar, a própria Caixa.
  */
 export async function carregarConcursos(quantidade = 50): Promise<ResultadoCargaConcursos> {
-  const neon = await buscarConcursosDoSnapshot()
+  const [oficial, neon] = await Promise.all([buscarUltimoResultadoOficial(), buscarConcursosDoSnapshot()])
+  const atual = oficial ? oficialParaHistorico(oficial) : null
+
   if (neon && neon.length >= 10) {
-    return { concursos: neon.slice(0, Math.max(quantidade, neon.length)), origem: 'neon' }
+    const semDuplicata = atual ? neon.filter((c) => c.numero !== atual.numero) : neon
+    const concursos = atual ? [atual, ...semDuplicata] : neon
+    return { concursos: concursos.slice(0, Math.max(quantidade, concursos.length)), origem: atual ? 'api' : 'neon' }
   }
 
   const aoVivo = await buscarConcursosAoVivo(quantidade)
   if (aoVivo && aoVivo.length >= 10) {
     return { concursos: aoVivo, origem: 'api' }
+  }
+
+  if (atual) {
+    const resto = CONCURSOS_HISTORICOS.filter((c) => c.numero !== atual.numero)
+    return { concursos: [atual, ...resto], origem: 'api' }
   }
 
   return { concursos: CONCURSOS_HISTORICOS, origem: 'estatica' }
