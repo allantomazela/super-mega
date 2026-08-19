@@ -1,6 +1,6 @@
 {
-  "name": "skip-react-template",
-  "description": "A frontend React Vite TypeScript Shadcn UI template for Skip projects",
+  "name": "otimizador-mega-sena",
+  "description": "Otimizador estratégico de jogos da Mega-Sena",
   "private": true,
   "version": "0.0.13",
   "type": "module",
@@ -15,10 +15,19 @@
     "format:check": "oxfmt --check",
     "preview": "vite preview",
     "test": "echo \"there are no tests for this project\" && exit 0",
-    "test:watch": "echo \"there are no tests for this project\" && exit 0"
+    "test:watch": "echo \"there are no tests for this project\" && exit 0",
+    "db:ping": "node --env-file=.env-dev scripts/test-neon.mjs",
+    "db:ping:homolog": "node --env-file=.env-homolog scripts/test-neon.mjs",
+    "db:ping:prod": "node --env-file=.env-prod scripts/test-neon.mjs",
+    "db:sync-concursos": "node --env-file=.env-dev scripts/sync-concursos-neon.mjs",
+    "db:sync-concursos:full": "node --env-file=.env-dev scripts/sync-concursos-neon.mjs --full",
+    "db:sync-concursos:homolog": "node --env-file=.env-homolog scripts/sync-concursos-neon.mjs",
+    "db:sync-concursos:prod": "node --env-file=.env-prod scripts/sync-concursos-neon.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
+    "@neondatabase/neon-js": "0.7.0-beta",
+    "@neondatabase/serverless": "^1.1.0",
     "@radix-ui/react-accordion": "^1.2.14",
     "@radix-ui/react-alert-dialog": "^1.1.17",
     "@radix-ui/react-aspect-ratio": "^1.1.10",

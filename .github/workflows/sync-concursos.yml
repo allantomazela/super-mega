@@ -1,0 +1,45 @@
+name: Sincronizar concursos da Caixa
+
+on:
+  schedule:
+    # 03:00 BRT (06:00 UTC) no dia seguinte aos sorteios (terça, quinta e sábado)
+    - cron: '0 6 * * 0,3,5'
+  workflow_dispatch:
+
+jobs:
+  sync-prod:
+    name: Neon production
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Atualizar histórico oficial
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: node scripts/sync-concursos-neon.mjs
+
+  sync-dev:
+    name: Neon dev
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Atualizar histórico oficial
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_DEV }}
+          SKIP_IF_NO_URL: '1'
+        run: node scripts/sync-concursos-neon.mjs
