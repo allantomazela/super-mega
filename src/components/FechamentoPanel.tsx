@@ -1,5 +1,15 @@
 import { useMemo, useState } from 'react'
-import { Grid3x3, Download, ShieldCheck, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react'
+import {
+  Grid3x3,
+  Download,
+  ShieldCheck,
+  ChevronDown,
+  ChevronUp,
+  AlertCircle,
+  Loader2,
+  CheckCircle2,
+  Info,
+} from 'lucide-react'
 import {
   aplicarFechamento,
   estatisticaFechamento,
@@ -18,9 +28,12 @@ import { useMega } from '@/lib/MegaContext'
 
 interface FechamentoPanelProps {
   dezenas: number[]
+  gerado: boolean
+  isLoading: boolean
+  onGenerate: () => void
 }
 
-export function FechamentoPanel({ dezenas }: FechamentoPanelProps) {
+export function FechamentoPanel({ dezenas, gerado, isLoading, onGenerate }: FechamentoPanelProps) {
   const { fechamentoN, setFechamentoN, fechamentoGarantia, setFechamentoGarantia } = useMega()
   const ordenadas = useMemo(() => [...dezenas].sort((a, b) => a - b), [dezenas])
   const disponivel = matrizDisponivel(fechamentoN, fechamentoGarantia)
@@ -35,13 +48,13 @@ export function FechamentoPanel({ dezenas }: FechamentoPanelProps) {
   )
   const pronto = disponivel && ordenadas.length === fechamentoN
   const jogos = useMemo(() => {
-    if (!pronto) return []
+    if (!pronto || !gerado) return []
     try {
       return aplicarFechamento(ordenadas, fechamentoN, fechamentoGarantia)
     } catch {
       return []
     }
-  }, [pronto, ordenadas, fechamentoN, fechamentoGarantia])
+  }, [pronto, gerado, ordenadas, fechamentoN, fechamentoGarantia])
   const [tabelaAberta, setTabelaAberta] = useState(false)
 
   function exportar() {
@@ -77,7 +90,6 @@ export function FechamentoPanel({ dezenas }: FechamentoPanelProps) {
         </div>
       </div>
 
-      {/* Slider n */}
       <div className="space-y-2">
         <div className="flex items-center justify-between text-xs">
           <label htmlFor="fechamento-n" className="text-zinc-400">
@@ -101,7 +113,6 @@ export function FechamentoPanel({ dezenas }: FechamentoPanelProps) {
         </div>
       </div>
 
-      {/* Garantia */}
       <fieldset className="space-y-2">
         <legend className="text-xs text-zinc-400">Garantia (se as 6 sorteadas estiverem no grupo)</legend>
         <div className="grid grid-cols-2 gap-2">
@@ -134,16 +145,15 @@ export function FechamentoPanel({ dezenas }: FechamentoPanelProps) {
           <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
           <div>
             Matriz L({fechamentoN},6,6,{fechamentoGarantia === 'quina' ? 5 : 4}) ainda não
-            disponível. Na v1 só o fechamento de 10 dezenas com garantia de Quina (14 jogos) está
-            embarcado e verificado. Demais tamanhos entram após validação exaustiva.
+            disponível. Disponíveis: 10 Quina, 10 Quadra, 11 Quina e 12 Quina.
           </div>
         </div>
       ) : (
         <>
           <p className="text-xs text-zinc-400 leading-relaxed">
-            {stats?.jogos} volantes de 6 no lugar de {stats?.combinacoesTotais.toLocaleString('pt-BR')}.
-            Se as 6 sorteadas estiverem nas {fechamentoN}, há pelo menos uma{' '}
-            {GARANTIA_LABEL[fechamentoGarantia]}. Custo{' '}
+            {stats?.jogos} volantes de 6 no lugar de{' '}
+            {stats?.combinacoesTotais.toLocaleString('pt-BR')}. Se as 6 sorteadas estiverem nas{' '}
+            {fechamentoN}, há pelo menos uma {GARANTIA_LABEL[fechamentoGarantia]}. Custo{' '}
             {stats ? formatCurrencyBRL(stats.custoFechamento) : '—'} vs{' '}
             {stats ? formatCurrencyBRL(stats.custoOficialCaixa) : '—'} no volante da Caixa.
           </p>
@@ -157,37 +167,90 @@ export function FechamentoPanel({ dezenas }: FechamentoPanelProps) {
 
           {!pronto ? (
             <p className="text-sm text-amber-300">
-              Marque {fechamentoN} dezenas ({ordenadas.length}/{fechamentoN}).
+              Marque {fechamentoN} dezenas ({ordenadas.length}/{fechamentoN}), depois clique em Gerar
+              Fechamento.
             </p>
           ) : stats ? (
-            <>
-              <div className="grid grid-cols-2 gap-2 text-center">
-                <Mini label="Jogos" value={String(stats.jogos)} />
-                <Mini label="Custo" value={formatCurrencyBRL(stats.custoFechamento)} />
-                <Mini label={`Vs C(${fechamentoN},6)`} value={formatCurrencyBRL(stats.custoCompleto)} />
-                <Mini label="Economia" value={`${stats.reducaoPct}%`} />
-              </div>
-              <p className="text-[11px] text-zinc-500 leading-relaxed">
-                D1–D{fechamentoN}:{' '}
-                {ordenadas.map((n, i) => `${i + 1}=${formatTwoDigits(n)}`).join(' · ')}
-              </p>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={exportar}
-                  className="flex-1 h-9 rounded-lg bg-[#1a1f2b] border border-[#262c34] text-xs text-zinc-200 flex items-center justify-center gap-1.5 hover:border-emerald-500/40"
-                >
-                  <Download className="w-3.5 h-3.5" /> TXT
-                </button>
-                <PrintableVersion
-                  jogos={jogosComScore(jogos)}
-                  modo={`Fechamento ${matriz?.label ?? `L${fechamentoN}`}`}
-                />
-              </div>
-            </>
+            <div className="grid grid-cols-2 gap-2 text-center">
+              <Mini label="Jogos" value={String(stats.jogos)} />
+              <Mini label="Custo" value={formatCurrencyBRL(stats.custoFechamento)} />
+              <Mini label={`Vs C(${fechamentoN},6)`} value={formatCurrencyBRL(stats.custoCompleto)} />
+              <Mini label="Economia" value={`${stats.reducaoPct}%`} />
+            </div>
           ) : null}
         </>
       )}
+
+      <div className="pt-3 border-t border-[#262c34] space-y-2">
+        <button
+          type="button"
+          onClick={onGenerate}
+          disabled={!pronto || isLoading}
+          className={`
+            w-full py-3.5 px-6 rounded-xl font-bold text-white flex items-center justify-center gap-2.5 transition-all duration-200 select-none shadow-lg
+            ${
+              pronto && !isLoading
+                ? 'emerald-gradient emerald-glow hover:translate-y-[-2px] hover:shadow-[0_0_20px_rgba(16,185,129,0.5)] active:scale-[0.98] cursor-pointer'
+                : 'bg-[#1a1f2b] text-zinc-500 border border-[#262c34] opacity-50 cursor-not-allowed'
+            }
+          `}
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin text-white" />
+              <span>Gerando fechamento...</span>
+            </>
+          ) : (
+            <>
+              <Grid3x3 className="w-5 h-5 text-white" />
+              <span>
+                {gerado ? 'Gerar novamente' : 'Gerar Fechamento'}
+                {stats ? ` (${stats.jogos} jogos)` : ''}
+              </span>
+            </>
+          )}
+        </button>
+        <div className="flex items-center justify-between text-xs text-zinc-500 px-1">
+          <span>
+            {ordenadas.length}/{fechamentoN} dezenas
+          </span>
+          {pronto ? (
+            <span className="text-emerald-400 font-medium flex items-center gap-1">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              Pronto para gerar
+            </span>
+          ) : (
+            <span className="text-amber-400/80 flex items-center gap-1">
+              <Info className="w-3 h-3" />
+              {!disponivel
+                ? 'Matriz indisponível'
+                : `Faltam ${Math.max(0, fechamentoN - ordenadas.length)}`}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {gerado && pronto && jogos.length > 0 ? (
+        <>
+          <p className="text-[11px] text-zinc-500 leading-relaxed">
+            D1–D{fechamentoN}:{' '}
+            {ordenadas.map((n, i) => `${i + 1}=${formatTwoDigits(n)}`).join(' · ')}
+          </p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={exportar}
+              className="flex-1 h-9 rounded-lg bg-[#1a1f2b] border border-[#262c34] text-xs text-zinc-200 flex items-center justify-center gap-1.5 hover:border-emerald-500/40"
+            >
+              <Download className="w-3.5 h-3.5" /> TXT
+            </button>
+            <PrintableVersion
+              jogos={jogosComScore(jogos)}
+              modo={`Fechamento ${matriz?.label ?? `L${fechamentoN}`}`}
+            />
+          </div>
+        </>
+      ) : null}
 
       <button
         type="button"

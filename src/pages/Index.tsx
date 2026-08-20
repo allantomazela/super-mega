@@ -92,6 +92,7 @@ export default function Index() {
     maxSelection,
     resetAll,
     fechamentoN,
+    fechamentoGarantia,
   } = useMega()
   const { toast } = useToast()
   const { concursos } = useConcursos()
@@ -121,6 +122,7 @@ export default function Index() {
   const [meta, setMeta] = useState<OptimizationMeta>(DEFAULT_META)
   const [qtdAleatorias, setQtdAleatorias] = useState(10)
   const [ticketSize, setTicketSize] = useState(MEGA_MIN_DEZENAS)
+  const [fechamentoGerado, setFechamentoGerado] = useState(false)
 
   const count = selectedNumbers.length
 
@@ -228,6 +230,26 @@ export default function Index() {
     if (isCincoJogos) handleGenerateFiveGames()
     else handleGenerateDesdobramento()
   }
+
+  const handleGenerateFechamento = () => {
+    if (count !== fechamentoN) return
+    setIsLoading(true)
+    setTimeout(() => {
+      setFechamentoGerado(true)
+      setIsLoading(false)
+      requestAnimationFrame(() => {
+        document.getElementById('fechamento-jogos')?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        })
+      })
+    }, 250)
+  }
+
+  // Aleatórias / troca de n ou garantia invalidam o fechamento já gerado
+  useEffect(() => {
+    setFechamentoGerado(false)
+  }, [selectedNumbers, fechamentoN, fechamentoGarantia])
 
   // Quick helper to fill a random sample of N numbers
   const handleRandomSelect = (total: number) => {
@@ -401,6 +423,9 @@ export default function Index() {
     if (mode === 'cinco-jogos') {
       setFiveGamesResult(null)
       setEditableGames(null)
+    }
+    if (mode === 'fechamento' || next === 'fechamento') {
+      setFechamentoGerado(false)
     }
     if (next === 'fechamento' && selectedNumbers.length > fechamentoN) {
       setSelectedNumbers(selectedNumbers.slice(0, fechamentoN))
@@ -629,7 +654,11 @@ export default function Index() {
                   </div>
                 </>
               )}
-              {isFechamento ? <FechamentoJogos dezenas={selectedNumbers} /> : null}
+              {isFechamento && fechamentoGerado ? (
+                <div id="fechamento-jogos">
+                  <FechamentoJogos dezenas={selectedNumbers} />
+                </div>
+              ) : null}
             </section>
 
             {/* Right Column: Filters (Desdobramento) / Painel 5 Jogos */}
@@ -648,7 +677,12 @@ export default function Index() {
                   onTicketSizeChange={handleTicketSizeChange}
                 />
               ) : isFechamento ? (
-                <FechamentoPanel dezenas={selectedNumbers} />
+                <FechamentoPanel
+                  dezenas={selectedNumbers}
+                  gerado={fechamentoGerado}
+                  isLoading={isLoading}
+                  onGenerate={handleGenerateFechamento}
+                />
               ) : (
                 <FiltersPanel
                   filters={filters}
