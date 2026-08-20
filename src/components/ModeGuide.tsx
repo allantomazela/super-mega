@@ -36,10 +36,10 @@ const MODES: {
   {
     key: 'fechamento',
     label: 'Fechamento',
-    hint: '10 dezenas → 14 jogos',
+    hint: 'Grupo 6–20 · matriz verificada',
     icon: Grid3x3,
-    how: 'Com exatamente 10 dezenas, aplica a matriz L(10,6,6,5): 14 jogos de 6 números no lugar de 210. Se as 6 sorteadas estiverem nas 10, há garantia de pelo menos uma Quina. Custo 14 × R$ 6,00 = R$ 84,00 (o volante de 10 da Caixa custa R$ 1.260,00).',
-    when: 'Use quando já tem um grupo de 10 e quer a garantia de Quina com o menor número conhecido de apostas simples.',
+    how: 'Escolha o tamanho do grupo (6 a 20) e a garantia (Quina ou Quadra). Matrizes verificadas hoje: L10 Quina (14), L10 Quadra (3), L11 Quina (24), L12 Quina (44). Demais (n, garantia) aparecem como “matriz ainda não disponível” até validação exaustiva. Construções L11/L12 não são ótimas — são as melhores encontradas offline no app.',
+    when: 'Use quando quiser reduzir C(n,6) a poucos volantes simples com garantia combinatória — não inventamos tabelas sem verificação.',
   },
 ]
 

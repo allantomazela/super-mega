@@ -1,0 +1,51 @@
+{
+  "schema": "fechamento-candidato/v1",
+  "label": "L(10,6,6,4)",
+  "n": 10,
+  "t": 4,
+  "garantia": "quadra",
+  "p": 6,
+  "k": 6,
+  "jogos": 3,
+  "combinacoesUniverso": 210,
+  "lowerBoundFraco": 2,
+  "validation": {
+    "ok": true,
+    "uncovered": 0,
+    "checked": 210,
+    "error": null
+  },
+  "method": "anneal",
+  "geradoEm": "2026-08-20T11:05:09.364Z",
+  "statusSugerido": "melhor_conhecida",
+  "otima": false,
+  "fonte": "Gerada offline (anneal); ainda não embarcada no app",
+  "blocos": [
+    [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    [
+      1,
+      2,
+      7,
+      8,
+      9,
+      10
+    ],
+    [
+      3,
+      4,
+      5,
+      6,
+      7,
+      8
+    ]
+  ],
+  "seed": 42,
+  "annealMs": 30000
+}

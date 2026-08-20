@@ -91,6 +91,7 @@ export default function Index() {
     setMode,
     maxSelection,
     resetAll,
+    fechamentoN,
   } = useMega()
   const { toast } = useToast()
   const { concursos } = useConcursos()
@@ -137,21 +138,21 @@ export default function Index() {
   }, [editableGames, selectedNumbers, fiveGamesResult])
 
   // === Limites dinâmicos conforme o modo ativo ===
-  const minRequired = isCincoJogos ? ticketSize : 6
+  const minRequired = isCincoJogos ? ticketSize : isFechamento ? fechamentoN : 6
   const isValidCount = isCincoJogos
     ? count >= ticketSize && count <= FIVE_GAMES_MAX_SELECTION
     : isFechamento
-      ? count === 10
+      ? count === fechamentoN
       : count >= 6 && count <= 20
   const isOverLimit = isCincoJogos
     ? count > FIVE_GAMES_MAX_SELECTION
     : isFechamento
-      ? count > 10
+      ? count > fechamentoN
       : count > 20
   const isUnderLimit = isCincoJogos
     ? count < ticketSize
     : isFechamento
-      ? count < 10
+      ? count < fechamentoN
       : count < 6
 
   // Circular progress indicator parameters
@@ -401,8 +402,8 @@ export default function Index() {
       setFiveGamesResult(null)
       setEditableGames(null)
     }
-    if (next === 'fechamento' && selectedNumbers.length > 10) {
-      setSelectedNumbers(selectedNumbers.slice(0, 10))
+    if (next === 'fechamento' && selectedNumbers.length > fechamentoN) {
+      setSelectedNumbers(selectedNumbers.slice(0, fechamentoN))
     }
     setMode(next)
   }
@@ -431,7 +432,7 @@ export default function Index() {
                 {isCincoJogos
                   ? `Selecione de ${ticketSize} a ${FIVE_GAMES_MAX_SELECTION} dezenas e gere 5 jogos oficiais de ${ticketSize} dezenas.`
                   : isFechamento
-                    ? 'Selecione exatamente 10 dezenas para o fechamento ótimo de 14 jogos (garantia de Quina).'
+                    ? `Escolha o tamanho do grupo (6–20) no painel. Matrizes verificadas: 10 Quina (14), 10 Quadra (3), 11 Quina (24), 12 Quina (44).`
                     : 'Selecione entre 6 e 20 dezenas (limite oficial da Caixa) e aplique os filtros.'}
               </p>
             </div>
@@ -442,7 +443,7 @@ export default function Index() {
                 quantidade={qtdAleatorias}
                 onQuantidadeChange={setQtdAleatorias}
                 onGerar={handleRandomSelect}
-                travadoEm={isFechamento ? 10 : undefined}
+                travadoEm={isFechamento ? fechamentoN : undefined}
               />
               <button
                 type="button"
@@ -563,7 +564,7 @@ export default function Index() {
                         {isCincoJogos
                           ? `Mínimo ${ticketSize} e máximo ${FIVE_GAMES_MAX_SELECTION} dezenas para otimização de cobertura.`
                           : isFechamento
-                            ? 'Exatamente 10 dezenas para o fechamento L(10,6,6,5).'
+                            ? `Exatamente ${fechamentoN} dezenas para o fechamento L(${fechamentoN},6,6,t).`
                             : 'Mínimo 6 e máximo 20 dezenas (volante oficial da Mega-Sena).'}
                       </p>
                     </div>

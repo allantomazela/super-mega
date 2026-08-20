@@ -1,12 +1,12 @@
 import React, { useMemo } from 'react'
-import { History, Trophy, Wifi, WifiOff, Award, Database } from 'lucide-react'
+import { History, Trophy, Wifi, WifiOff, Award, Database, Scale } from 'lucide-react'
 import {
   montarResumoSimulacao,
   simularConjunto,
   ResumoSimulacao,
   ResultadoJogoSimulacao,
 } from '@/data/concursosHistoricos'
-import { formatGameString } from '@/lib/megaEngine'
+import { formatGameString, probabilidadeAcertos } from '@/lib/megaEngine'
 import { useConcursos } from '@/hooks/useConcursos'
 
 /* ============================================================
@@ -57,6 +57,29 @@ export const SimulacaoHistorica: React.FC<SimulacaoHistoricaProps> = ({
     if (!resumo) return []
     return [...resumo.jogos].sort((a, b) => b.taxaAcerto - a.taxaAcerto).slice(0, 10)
   }, [resumo])
+
+  /** Valor esperado por acaso (hipergeométrica), somando bilhetes de forma independente. */
+  const evAcaso = useMemo(() => {
+    if (!resumo || jogos.length === 0) return null
+    const N = resumo.totalConcursos
+    let eQ = 0
+    let eQi = 0
+    let eS = 0
+    for (const jogo of jogos) {
+      const n = jogo.length
+      eQ += N * probabilidadeAcertos(4, n)
+      eQi += N * probabilidadeAcertos(5, n)
+      eS += N * probabilidadeAcertos(6, n)
+    }
+    return {
+      quadra: eQ,
+      quina: eQi,
+      sena: eS,
+      obsQuadra: resumo.totalQuadras,
+      obsQuina: resumo.totalQuinas,
+      obsSena: resumo.totalSenas,
+    }
+  }, [resumo, jogos])
 
   return (
     <div className="surface-card rounded-2xl p-5 sm:p-6 border border-emerald-500/20 shadow-lg space-y-5">
@@ -240,6 +263,43 @@ export const SimulacaoHistorica: React.FC<SimulacaoHistoricaProps> = ({
             </div>
           )}
 
+          {/* EV por acaso vs observado */}
+          {evAcaso ? (
+            <div className="rounded-xl border border-[#262c34] overflow-hidden">
+              <div className="bg-[#161a1f] px-4 py-2.5 border-b border-[#262c34] flex items-center gap-2">
+                <Scale className="w-3.5 h-3.5 text-zinc-400" />
+                <span className="text-xs font-semibold text-zinc-300">
+                  Observado vs esperado por acaso
+                </span>
+              </div>
+              <div className="p-3 grid grid-cols-3 gap-2 text-center">
+                <EvCell
+                  label="Quadras"
+                  observado={evAcaso.obsQuadra}
+                  esperado={evAcaso.quadra}
+                  color="text-orange-400"
+                />
+                <EvCell
+                  label="Quinas"
+                  observado={evAcaso.obsQuina}
+                  esperado={evAcaso.quina}
+                  color="text-amber-400"
+                />
+                <EvCell
+                  label="Senas"
+                  observado={evAcaso.obsSena}
+                  esperado={evAcaso.sena}
+                  color="text-emerald-400"
+                />
+              </div>
+              <p className="px-3 pb-3 text-[10px] text-zinc-500 leading-relaxed">
+                Esperado = Σ P(exato k) × concursos por bilhete (hipergeométrica). No modo
+                conjunto, o observado agrega o conjunto; o esperado ainda soma bilhetes de forma
+                independente (aproximação).
+              </p>
+            </div>
+          ) : null}
+
           {/* Nota explicativa */}
           <div className="text-[11px] text-zinc-400 leading-relaxed bg-[#12161b] border border-[#262c34] rounded-xl p-3.5">
             <strong className="text-zinc-200">Como ler:</strong> a simulação compara cada jogo
@@ -310,3 +370,29 @@ const MiniStat: React.FC<{ label: string; value: string; highlight?: boolean }> 
     </div>
   </div>
 )
+
+function formatEv(n: number): string {
+  if (n >= 100) return n.toFixed(0)
+  if (n >= 10) return n.toFixed(1)
+  if (n >= 1) return n.toFixed(2)
+  return n.toFixed(3)
+}
+
+const EvCell: React.FC<{
+  label: string
+  observado: number
+  esperado: number
+  color: string
+}> = ({ label, observado, esperado, color }) => {
+  const ratio = esperado > 0 ? observado / esperado : null
+  return (
+    <div className="rounded-lg border border-[#262c34] bg-[#12161b] p-2.5">
+      <div className={`text-[10px] font-semibold uppercase tracking-wider ${color}`}>{label}</div>
+      <div className="mt-1 text-sm font-bold text-white tabular-nums">{observado}</div>
+      <div className="text-[10px] text-zinc-500 mt-0.5">
+        EV {formatEv(esperado)}
+        {ratio != null ? ` · ×${ratio.toFixed(2)}` : ''}
+      </div>
+    </div>
+  )
+}

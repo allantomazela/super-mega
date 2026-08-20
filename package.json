@@ -24,7 +24,15 @@
     "db:sync-concursos:homolog": "node --env-file=.env-homolog scripts/sync-concursos-neon.mjs",
     "db:sync-concursos:prod": "node --env-file=.env-prod scripts/sync-concursos-neon.mjs",
     "db:export-concursos": "node --env-file=.env-dev scripts/export-concursos-json.mjs",
-    "db:export-concursos:prod": "node --env-file=.env-prod scripts/export-concursos-json.mjs"
+    "db:export-concursos:prod": "node --env-file=.env-prod scripts/export-concursos-json.mjs",
+    "fechamento:smoke": "node scripts/fechamento/validar-matriz.mjs --l10",
+    "fechamento:validar": "node scripts/fechamento/validar-matriz.mjs",
+    "fechamento:gerar": "node scripts/fechamento/gerar-matriz.mjs",
+    "fechamento:gerar:l10-quadra": "node scripts/fechamento/gerar-matriz.mjs --size=10 --target=4 --anneal",
+    "fechamento:gerar:l11-quina": "node scripts/fechamento/gerar-matriz.mjs --size=11 --target=5 --anneal",
+    "fechamento:gerar:l12-quina": "node scripts/fechamento/gerar-matriz.mjs --size=12 --target=5 --anneal",
+    "fechamento:busca:l11-l12": "node scripts/fechamento/busca-l11-l12.mjs --ms=90000 --seeds=8",
+    "fechamento:prioridades": "node scripts/fechamento/gerar-matriz.mjs --prioridades --anneal"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",

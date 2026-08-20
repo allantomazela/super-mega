@@ -11,7 +11,7 @@ interface SeletorAleatoriasProps {
   quantidade: number
   onQuantidadeChange: (n: number) => void
   onGerar: (quantidade: number) => void
-  /** Fechamento exige 10 dezenas; o seletor fica travado. */
+  /** Quando definido (ex.: modo fechamento), trava o seletor nesse tamanho. */
   travadoEm?: number
 }
 
