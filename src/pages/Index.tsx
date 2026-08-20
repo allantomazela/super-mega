@@ -457,7 +457,7 @@ export default function Index() {
                 {isCincoJogos
                   ? `Selecione de ${ticketSize} a ${FIVE_GAMES_MAX_SELECTION} dezenas e gere 5 jogos oficiais de ${ticketSize} dezenas.`
                   : isFechamento
-                    ? `Escolha o tamanho do grupo (6–20) no painel. Matrizes verificadas: 10 Quina (14), 10 Quadra (3), 11 Quina (24), 12 Quina (44).`
+                    ? `Escolha o tamanho disponível no painel (hoje 10–12 conforme a garantia) e clique em Gerar Fechamento. 13–20 dezenas ainda não têm matriz verificada — use Desdobramento ou 5 Jogos.`
                     : 'Selecione entre 6 e 20 dezenas (limite oficial da Caixa) e aplique os filtros.'}
               </p>
             </div>

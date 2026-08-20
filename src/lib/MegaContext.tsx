@@ -3,6 +3,8 @@ import { FilterOptions, DEFAULT_FILTERS, FIVE_GAMES_MAX_SELECTION } from './mega
 import {
   FECHAMENTO_N_MAX,
   FECHAMENTO_N_MIN,
+  listarNDisponiveis,
+  snapFechamentoN,
   type GarantiaFechamento,
 } from './coveringDesign'
 
@@ -28,7 +30,7 @@ interface MegaContextType {
   setMode: React.Dispatch<React.SetStateAction<AppMode>>
   /** Limite máximo de dezenas conforme o modo ativo. */
   maxSelection: number
-  /** Tamanho do grupo no Modo Fechamento (6–20). */
+  /** Tamanho do grupo no Modo Fechamento (apenas n com matriz verificada). */
   fechamentoN: number
   setFechamentoN: (n: number) => void
   /** Garantia desejada: Quadra (t=4) ou Quina (t=5). */
@@ -42,9 +44,10 @@ const STORAGE_KEY_MODE = 'mega_mode'
 const STORAGE_KEY_FECH_N = 'mega_fechamento_n'
 const STORAGE_KEY_FECH_G = 'mega_fechamento_garantia'
 
-function clampFechamentoN(n: number): number {
-  if (!Number.isFinite(n)) return 10
-  return Math.min(FECHAMENTO_N_MAX, Math.max(FECHAMENTO_N_MIN, Math.round(n)))
+function clampFechamentoN(n: number, garantia: GarantiaFechamento = 'quina'): number {
+  if (!Number.isFinite(n)) return snapFechamentoN(10, garantia)
+  const clamped = Math.min(FECHAMENTO_N_MAX, Math.max(FECHAMENTO_N_MIN, Math.round(n)))
+  return snapFechamentoN(clamped, garantia)
 }
 
 const MegaContext = createContext<MegaContextType | undefined>(undefined)
@@ -92,16 +95,6 @@ export const MegaProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return 'desdobramento'
   })
 
-  const [fechamentoN, setFechamentoNState] = useState<number>(() => {
-    try {
-      const saved = sessionStorage.getItem(STORAGE_KEY_FECH_N)
-      if (saved) return clampFechamentoN(Number(saved))
-    } catch {
-      // ignore
-    }
-    return 10
-  })
-
   const [fechamentoGarantia, setFechamentoGarantiaState] = useState<GarantiaFechamento>(() => {
     try {
       const saved = sessionStorage.getItem(STORAGE_KEY_FECH_G)
@@ -112,6 +105,19 @@ export const MegaProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return 'quina'
   })
 
+  const [fechamentoN, setFechamentoNState] = useState<number>(() => {
+    let garantia: GarantiaFechamento = 'quina'
+    try {
+      const savedG = sessionStorage.getItem(STORAGE_KEY_FECH_G)
+      if (savedG === 'quadra' || savedG === 'quina') garantia = savedG
+      const saved = sessionStorage.getItem(STORAGE_KEY_FECH_N)
+      if (saved) return clampFechamentoN(Number(saved), garantia)
+    } catch {
+      // ignore
+    }
+    return snapFechamentoN(10, garantia)
+  })
+
   const maxSelection =
     mode === 'fechamento'
       ? fechamentoN
@@ -119,15 +125,35 @@ export const MegaProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ? FIVE_GAMES_MAX_SELECTION
         : 20
 
-  const setFechamentoN = useCallback((n: number) => {
-    const next = clampFechamentoN(n)
-    setFechamentoNState(next)
-    setSelectedNumbers((prev) => (prev.length > next ? prev.slice(0, next) : prev))
-  }, [])
+  const setFechamentoN = useCallback(
+    (n: number) => {
+      const next = clampFechamentoN(n, fechamentoGarantia)
+      setFechamentoNState(next)
+      setSelectedNumbers((prev) => (prev.length > next ? prev.slice(0, next) : prev))
+    },
+    [fechamentoGarantia],
+  )
 
   const setFechamentoGarantia = useCallback((g: GarantiaFechamento) => {
     setFechamentoGarantiaState(g)
+    setFechamentoNState((nAtual) => {
+      const next = snapFechamentoN(nAtual, g)
+      if (next !== nAtual) {
+        setSelectedNumbers((prev) => (prev.length > next ? prev.slice(0, next) : prev))
+      }
+      return next
+    })
   }, [])
+
+  // Corrige n salvo em session sem matriz (ex.: 15–20 da UI antiga)
+  useEffect(() => {
+    const disponiveis = listarNDisponiveis(fechamentoGarantia)
+    if (disponiveis.length > 0 && !disponiveis.includes(fechamentoN)) {
+      const next = snapFechamentoN(fechamentoN, fechamentoGarantia)
+      setFechamentoNState(next)
+      setSelectedNumbers((prev) => (prev.length > next ? prev.slice(0, next) : prev))
+    }
+  }, [fechamentoGarantia, fechamentoN])
 
   useEffect(() => {
     try {

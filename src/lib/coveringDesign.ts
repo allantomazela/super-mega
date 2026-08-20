@@ -122,12 +122,38 @@ export function listarMatrizesDisponiveis(): MatrizFechamento[] {
   return [...REGISTRY]
 }
 
+/** Tamanhos de grupo (n) que têm matriz para a garantia dada. */
+export function listarNDisponiveis(garantia?: GarantiaFechamento): number[] {
+  const set = new Set<number>()
+  for (const m of REGISTRY) {
+    if (garantia == null || m.garantia === garantia) set.add(m.n)
+  }
+  return [...set].sort((a, b) => a - b)
+}
+
+/** Qualquer n com pelo menos uma garantia embarcada. */
+export function listarTodosNDisponiveis(): number[] {
+  return listarNDisponiveis()
+}
+
 export function obterMatriz(n: number, garantia: GarantiaFechamento): MatrizFechamento | null {
   return REGISTRY_MAP.get(chaveMatriz(n, garantia)) ?? null
 }
 
 export function matrizDisponivel(n: number, garantia: GarantiaFechamento): boolean {
   return REGISTRY_MAP.has(chaveMatriz(n, garantia))
+}
+
+/**
+ * Ajusta n para o maior tamanho disponível ≤ desejado (ou o menor disponível).
+ * Evita ficar preso em n=15–20 sem matriz.
+ */
+export function snapFechamentoN(n: number, garantia: GarantiaFechamento): number {
+  const disponiveis = listarNDisponiveis(garantia)
+  if (disponiveis.length === 0) return 10
+  const menoresOuIguais = disponiveis.filter((x) => x <= n)
+  if (menoresOuIguais.length > 0) return menoresOuIguais[menoresOuIguais.length - 1]
+  return disponiveis[0]
 }
 
 function combinar(n: number, k: number): number[][] {

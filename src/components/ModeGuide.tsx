@@ -36,9 +36,9 @@ const MODES: {
   {
     key: 'fechamento',
     label: 'Fechamento',
-    hint: 'Grupo 6–20 · matriz verificada',
+    hint: 'Matrizes verificadas (10–12)',
     icon: Grid3x3,
-    how: 'Escolha o tamanho do grupo (6 a 20) e a garantia (Quina ou Quadra). Matrizes verificadas hoje: L10 Quina (14), L10 Quadra (3), L11 Quina (24), L12 Quina (44). Demais (n, garantia) aparecem como “matriz ainda não disponível” até validação exaustiva. Construções L11/L12 não são ótimas — são as melhores encontradas offline no app.',
+    how: 'Escolha um tamanho de grupo com matriz verificada (hoje: 10, 11 ou 12 conforme a garantia) e clique em Gerar Fechamento. O volante da Caixa aceita até 20 dezenas, mas o fechamento L(n,6,6,t) só gera jogos onde há tabela validada — 13–20 ainda não. Para grupos grandes use Desdobramento ou 5 Jogos.',
     when: 'Use quando quiser reduzir C(n,6) a poucos volantes simples com garantia combinatória — não inventamos tabelas sem verificação.',
   },
 ]

@@ -16,9 +16,8 @@ import {
   matrizDisponivel,
   matrizEstaVerificada,
   obterMatriz,
+  listarNDisponiveis,
   GARANTIA_LABEL,
-  FECHAMENTO_N_MIN,
-  FECHAMENTO_N_MAX,
   type GarantiaFechamento,
 } from '@/lib/coveringDesign'
 import { PRECO_SIMPLES_CAIXA, TABELA_OFICIAL_MEGA } from '@/lib/caixaOficial'
@@ -76,6 +75,11 @@ export function FechamentoPanel({ dezenas, gerado, isLoading, onGenerate }: Fech
         ? 'Melhor construção conhecida'
         : null
 
+  const nDisponiveis = useMemo(
+    () => listarNDisponiveis(fechamentoGarantia),
+    [fechamentoGarantia],
+  )
+
   return (
     <div className="surface-card rounded-2xl p-5 shadow-xl space-y-4">
       <div className="flex items-center gap-2.5 border-b border-[#262c34] pb-3">
@@ -90,27 +94,36 @@ export function FechamentoPanel({ dezenas, gerado, isLoading, onGenerate }: Fech
         </div>
       </div>
 
+      {/* Só tamanhos com matriz verificada — não confundir com volante Caixa 6–20 */}
       <div className="space-y-2">
         <div className="flex items-center justify-between text-xs">
-          <label htmlFor="fechamento-n" className="text-zinc-400">
-            Tamanho do grupo (n)
-          </label>
+          <span className="text-zinc-400">Tamanho do grupo (n)</span>
           <span className="font-bold text-emerald-400 tabular-nums">{fechamentoN}</span>
         </div>
-        <input
-          id="fechamento-n"
-          type="range"
-          min={FECHAMENTO_N_MIN}
-          max={FECHAMENTO_N_MAX}
-          step={1}
-          value={fechamentoN}
-          onChange={(e) => setFechamentoN(Number(e.target.value))}
-          className="w-full accent-emerald-500"
-        />
-        <div className="flex justify-between text-[10px] text-zinc-600">
-          <span>{FECHAMENTO_N_MIN}</span>
-          <span>{FECHAMENTO_N_MAX}</span>
+        <div className="flex flex-wrap gap-2">
+          {nDisponiveis.map((n) => {
+            const ativa = fechamentoN === n
+            return (
+              <button
+                key={n}
+                type="button"
+                onClick={() => setFechamentoN(n)}
+                className={`min-w-[2.75rem] h-9 px-3 rounded-lg border text-sm font-semibold transition-colors ${
+                  ativa
+                    ? 'border-emerald-500/50 bg-emerald-950/40 text-emerald-300'
+                    : 'border-[#262c34] bg-[#161a1f] text-zinc-400 hover:border-zinc-600 hover:text-white'
+                }`}
+              >
+                {n}
+              </button>
+            )
+          })}
         </div>
+        <p className="text-[10px] text-zinc-500 leading-relaxed">
+          Só aparecem tamanhos com matriz L(n,6,6,t) verificada. O volante da Caixa vai até 20
+          dezenas, mas fechamento combinatório exige tabela validada — hoje:{' '}
+          {nDisponiveis.join(', ')}. Para 13–20 use Desdobramento ou 5 Jogos.
+        </p>
       </div>
 
       <fieldset className="space-y-2">
@@ -118,21 +131,23 @@ export function FechamentoPanel({ dezenas, gerado, isLoading, onGenerate }: Fech
         <div className="grid grid-cols-2 gap-2">
           {(['quina', 'quadra'] as GarantiaFechamento[]).map((g) => {
             const ativa = fechamentoGarantia === g
-            const tem = matrizDisponivel(fechamentoN, g)
+            const ns = listarNDisponiveis(g)
+            const tem = ns.length > 0
             return (
               <button
                 key={g}
                 type="button"
                 onClick={() => setFechamentoGarantia(g)}
+                disabled={!tem}
                 className={`rounded-lg border px-3 py-2 text-left transition-colors ${
                   ativa
                     ? 'border-emerald-500/50 bg-emerald-950/40 text-white'
                     : 'border-[#262c34] bg-[#161a1f] text-zinc-400 hover:border-zinc-600'
-                }`}
+                } disabled:opacity-40 disabled:cursor-not-allowed`}
               >
                 <div className="text-sm font-semibold">{GARANTIA_LABEL[g]}</div>
                 <div className="text-[10px] mt-0.5 opacity-80">
-                  {tem ? 'Matriz disponível' : 'Indisponível'}
+                  {tem ? `n = ${ns.join(', ')}` : 'Indisponível'}
                 </div>
               </button>
             )
@@ -145,7 +160,7 @@ export function FechamentoPanel({ dezenas, gerado, isLoading, onGenerate }: Fech
           <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
           <div>
             Matriz L({fechamentoN},6,6,{fechamentoGarantia === 'quina' ? 5 : 4}) ainda não
-            disponível. Disponíveis: 10 Quina, 10 Quadra, 11 Quina e 12 Quina.
+            disponível para esta combinação. Escolha um tamanho listado acima.
           </div>
         </div>
       ) : (
