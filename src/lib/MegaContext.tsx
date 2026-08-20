@@ -50,6 +50,24 @@ function clampFechamentoN(n: number, garantia: GarantiaFechamento = 'quina'): nu
   return snapFechamentoN(clamped, garantia)
 }
 
+/** Ao mudar n: corta se sobrar; completa com aleatórias se faltar — mantém o botão Gerar habilitável. */
+function ajustarDezenasAoTamanho(prev: number[], next: number): number[] {
+  if (next <= 0) return []
+  if (prev.length === next) return prev
+  if (prev.length > next) return prev.slice(0, next)
+  const usados = new Set(prev)
+  const pool: number[] = []
+  for (let i = 1; i <= 60; i++) {
+    if (!usados.has(i)) pool.push(i)
+  }
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[pool[i], pool[j]] = [pool[j], pool[i]]
+  }
+  const faltam = next - prev.length
+  return [...prev, ...pool.slice(0, faltam)].sort((a, b) => a - b)
+}
+
 const MegaContext = createContext<MegaContextType | undefined>(undefined)
 
 export const MegaProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -129,7 +147,7 @@ export const MegaProvider: React.FC<{ children: React.ReactNode }> = ({ children
     (n: number) => {
       const next = clampFechamentoN(n, fechamentoGarantia)
       setFechamentoNState(next)
-      setSelectedNumbers((prev) => (prev.length > next ? prev.slice(0, next) : prev))
+      setSelectedNumbers((prev) => ajustarDezenasAoTamanho(prev, next))
     },
     [fechamentoGarantia],
   )
@@ -138,9 +156,7 @@ export const MegaProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setFechamentoGarantiaState(g)
     setFechamentoNState((nAtual) => {
       const next = snapFechamentoN(nAtual, g)
-      if (next !== nAtual) {
-        setSelectedNumbers((prev) => (prev.length > next ? prev.slice(0, next) : prev))
-      }
+      setSelectedNumbers((prev) => ajustarDezenasAoTamanho(prev, next))
       return next
     })
   }, [])
@@ -151,7 +167,7 @@ export const MegaProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (disponiveis.length > 0 && !disponiveis.includes(fechamentoN)) {
       const next = snapFechamentoN(fechamentoN, fechamentoGarantia)
       setFechamentoNState(next)
-      setSelectedNumbers((prev) => (prev.length > next ? prev.slice(0, next) : prev))
+      setSelectedNumbers((prev) => ajustarDezenasAoTamanho(prev, next))
     }
   }, [fechamentoGarantia, fechamentoN])
 

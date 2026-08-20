@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react'
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Filter,
@@ -123,6 +123,7 @@ export default function Index() {
   const [qtdAleatorias, setQtdAleatorias] = useState(10)
   const [ticketSize, setTicketSize] = useState(MEGA_MIN_DEZENAS)
   const [fechamentoGerado, setFechamentoGerado] = useState(false)
+  const fechamentoGenToken = useRef(0)
 
   const count = selectedNumbers.length
 
@@ -233,8 +234,10 @@ export default function Index() {
 
   const handleGenerateFechamento = () => {
     if (count !== fechamentoN) return
+    const token = ++fechamentoGenToken.current
     setIsLoading(true)
-    setTimeout(() => {
+    window.setTimeout(() => {
+      if (token !== fechamentoGenToken.current) return
       setFechamentoGerado(true)
       setIsLoading(false)
       requestAnimationFrame(() => {
@@ -243,12 +246,14 @@ export default function Index() {
           block: 'start',
         })
       })
-    }, 250)
+    }, 200)
   }
 
-  // Aleatórias / troca de n ou garantia invalidam o fechamento já gerado
+  // Troca de dezenas / n / garantia: invalida resultado e cancela generate pendente
   useEffect(() => {
+    fechamentoGenToken.current += 1
     setFechamentoGerado(false)
+    setIsLoading(false)
   }, [selectedNumbers, fechamentoN, fechamentoGarantia])
 
   // Quick helper to fill a random sample of N numbers

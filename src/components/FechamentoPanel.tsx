@@ -14,7 +14,6 @@ import {
   aplicarFechamento,
   estatisticaFechamento,
   matrizDisponivel,
-  matrizEstaVerificada,
   obterMatriz,
   listarNDisponiveis,
   GARANTIA_LABEL,
@@ -37,10 +36,8 @@ export function FechamentoPanel({ dezenas, gerado, isLoading, onGenerate }: Fech
   const ordenadas = useMemo(() => [...dezenas].sort((a, b) => a - b), [dezenas])
   const disponivel = matrizDisponivel(fechamentoN, fechamentoGarantia)
   const matriz = disponivel ? obterMatriz(fechamentoN, fechamentoGarantia) : null
-  const matrizOk = useMemo(
-    () => (matriz ? matrizEstaVerificada(matriz) : false),
-    [matriz],
-  )
+  // Matrizes do registry já passaram no checklist offline — não revalidar C(n,6) no clique (trava a UI).
+  const matrizOk = Boolean(matriz)
   const stats = useMemo(
     () => estatisticaFechamento(fechamentoN, fechamentoGarantia, PRECO_SIMPLES_CAIXA),
     [fechamentoN, fechamentoGarantia],
@@ -120,9 +117,9 @@ export function FechamentoPanel({ dezenas, gerado, isLoading, onGenerate }: Fech
           })}
         </div>
         <p className="text-[10px] text-zinc-500 leading-relaxed">
-          Só aparecem tamanhos com matriz L(n,6,6,t) verificada. O volante da Caixa vai até 20
-          dezenas, mas fechamento combinatório exige tabela validada — hoje:{' '}
-          {nDisponiveis.join(', ')}. Para 13–20 use Desdobramento ou 5 Jogos.
+          Ao trocar o tamanho, o app ajusta as dezenas automaticamente (mantém as atuais e completa
+          com aleatórias, ou corta o excesso). Depois clique em <strong className="text-zinc-300">Gerar Fechamento</strong>.
+          13–20 ainda não têm matriz — use Desdobramento ou 5 Jogos.
         </p>
       </div>
 
