@@ -17,22 +17,19 @@ const COPY: Record<
     botao: string
     botaoLoading: string
     erroPadrao: string
-    alternar: { pergunta: string; rotulo: string; to: string }
   }
 > = {
   login: {
-    linha: 'Acesse com Google para continuar nos seus jogos.',
-    botao: 'Continuar com Google',
+    linha: 'Entre com Google para acessar seus jogos e histórico.',
+    botao: 'Entrar com Google',
     botaoLoading: 'Conectando…',
     erroPadrao: 'Não foi possível iniciar o login com Google.',
-    alternar: { pergunta: 'Primeiro acesso?', rotulo: 'Criar conta', to: '/cadastro' },
   },
   cadastro: {
-    linha: 'Na primeira autorização, o perfil privado é criado com o Google.',
+    linha: 'Crie sua conta com Google em um toque — sem senha extra.',
     botao: 'Cadastrar com Google',
     botaoLoading: 'Abrindo Google…',
     erroPadrao: 'Não foi possível iniciar o cadastro com Google.',
-    alternar: { pergunta: 'Já tem conta?', rotulo: 'Entrar', to: '/login' },
   },
 }
 
@@ -40,7 +37,7 @@ interface AuthGoogleScreenProps {
   modo: AuthModo
 }
 
-/** Tela pública de auth — a marca fica no wallpaper; o painel só conduz o CTA. */
+/** Tela de auth centralizada: wallpaper + um card moderno de acesso. */
 export function AuthGoogleScreen({ modo }: AuthGoogleScreenProps) {
   const { user, loading, signInGoogle } = useAuth()
   const [enviando, setEnviando] = useState(false)
@@ -51,9 +48,9 @@ export function AuthGoogleScreen({ modo }: AuthGoogleScreenProps) {
     return (
       <div className={styles.screenLoading}>
         <AuthBackdrop />
-        <div className="relative flex flex-col items-center gap-3">
-          <img src={AUTH_LOGO} alt="" className="w-14 h-14 animate-pulse rounded-2xl" />
-          <Loader2 className={`animate-spin ${styles.spinnerGold}`} />
+        <div className={styles.loadingInner}>
+          <img src={AUTH_LOGO} alt="" className={styles.loadingLogo} />
+          <Loader2 className={styles.spinner} />
         </div>
       </div>
     )
@@ -78,73 +75,70 @@ export function AuthGoogleScreen({ modo }: AuthGoogleScreenProps) {
     <div className={styles.screen}>
       <AuthBackdrop />
 
-      {/* Reserva a faixa central da arte (medalhão + MEGA DOS MILIONÁRIOS) */}
-      <div className={styles.brandSpace} aria-hidden />
-
       <main className={styles.main}>
-        <div className={styles.panel}>
-          <header className={styles.headingBlock}>
-            <h1 className={styles.brandTitle}>
-              <span className={styles.brandMega}>MEGA</span>
-              <span className={styles.brandRest}>DOS MILIONÁRIOS</span>
-            </h1>
-            <p className={styles.linha}>{copy.linha}</p>
-          </header>
+        <section className={styles.card} aria-labelledby="auth-brand-title">
+          <div className={styles.cardGlow} aria-hidden />
 
-          <nav className={styles.nav} aria-label="Modo de acesso">
-            <ModoLink to="/login" ativo={modo === 'login'}>
+          <div className={styles.brand}>
+            <img src={AUTH_LOGO} alt="" className={styles.logo} />
+            <h1 id="auth-brand-title" className={styles.brandName}>
+              MEGA DOS MILIONÁRIOS
+            </h1>
+          </div>
+
+          <nav className={styles.tabs} aria-label="Modo de acesso">
+            <Link
+              to="/login"
+              className={modo === 'login' ? styles.tabAtivo : styles.tab}
+              aria-current={modo === 'login' ? 'page' : undefined}
+            >
               Entrar
-            </ModoLink>
-            <ModoLink to="/cadastro" ativo={modo === 'cadastro'}>
+            </Link>
+            <Link
+              to="/cadastro"
+              className={modo === 'cadastro' ? styles.tabAtivo : styles.tab}
+              aria-current={modo === 'cadastro' ? 'page' : undefined}
+            >
               Criar conta
-            </ModoLink>
+            </Link>
           </nav>
 
-          <div className={styles.card}>
-            {erro ? (
-              <p className={styles.erro} role="alert">
-                {erro}
-              </p>
-            ) : null}
+          <p className={styles.linha}>{copy.linha}</p>
 
-            <button
-              type="button"
-              onClick={() => void continuarComGoogle()}
-              disabled={enviando}
-              className={styles.cta}
-            >
-              {enviando ? (
-                <Loader2 className="w-5 h-5 animate-spin text-zinc-600" />
-              ) : (
-                <span className={styles.googleBadge}>
-                  <GoogleIcon />
-                </span>
-              )}
-              {enviando ? copy.botaoLoading : copy.botao}
-            </button>
-
-            <p className={styles.alternar}>
-              {copy.alternar.pergunta}{' '}
-              <Link to={copy.alternar.to} className={styles.alternarLink}>
-                {copy.alternar.rotulo}
-              </Link>
+          {erro ? (
+            <p className={styles.erro} role="alert">
+              {erro}
             </p>
-          </div>
-        </div>
+          ) : null}
+
+          <button
+            type="button"
+            onClick={() => void continuarComGoogle()}
+            disabled={enviando}
+            className={styles.cta}
+          >
+            {enviando ? (
+              <Loader2 className={styles.ctaSpinner} />
+            ) : (
+              <span className={styles.googleBadge}>
+                <GoogleIcon />
+              </span>
+            )}
+            {enviando ? copy.botaoLoading : copy.botao}
+          </button>
+        </section>
       </main>
 
       <footer className={styles.footer}>
-        <div className={styles.footerInner}>
-          <p className={styles.disclaimer}>
-            Este site/sistema <strong>não garante acertividade</strong> nem prêmios. Ele é baseado
-            em cálculos de estatística e probabilidade que ajudam a decidir os números a serem
-            jogados para se ter mais chance de premiação.
-          </p>
-          <p className={styles.copy}>
-            © {YEAR} MEGA DOS MILIONÁRIOS. Todos os direitos reservados. Jogue com responsabilidade
-            (+18).
-          </p>
-        </div>
+        <p className={styles.disclaimer}>
+          Este site/sistema <strong>não garante acertividade</strong> nem prêmios. Ele é baseado em
+          cálculos de estatística e probabilidade que ajudam a decidir os números a serem jogados
+          para se ter mais chance de premiação.
+        </p>
+        <p className={styles.copy}>
+          © {YEAR} MEGA DOS MILIONÁRIOS. Todos os direitos reservados. Jogue com responsabilidade
+          (+18).
+        </p>
       </footer>
     </div>
   )
@@ -159,34 +153,14 @@ function AuthBackdrop() {
         role="img"
         aria-label="MEGA DOS MILIONÁRIOS"
       />
-      <div className={styles.vignette} />
+      <div className={styles.scrim} />
     </>
-  )
-}
-
-function ModoLink({
-  to,
-  ativo,
-  children,
-}: {
-  to: string
-  ativo: boolean
-  children: string
-}) {
-  return (
-    <Link
-      to={to}
-      className={ativo ? styles.modoLinkAtivo : styles.modoLink}
-      aria-current={ativo ? 'page' : undefined}
-    >
-      {children}
-    </Link>
   )
 }
 
 function GoogleIcon() {
   return (
-    <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" aria-hidden="true">
+    <svg className={styles.googleSvg} viewBox="0 0 24 24" aria-hidden="true">
       <path
         fill="#4285F4"
         d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
