@@ -12,6 +12,7 @@ import { formatTwoDigits, formatGameString, buildJogosTxtCaixa } from '@/lib/meg
 import { ComparacaoConcurso } from '@/components/ComparacaoConcurso'
 import { VolanteOficial } from '@/components/VolanteOficial'
 import { SimulacaoHistorica } from '@/components/SimulacaoHistorica'
+import { BotaoConfirmarHistorico } from '@/components/BotaoConfirmarHistorico'
 import { useHistoricoConferencias } from '@/hooks/useHistoricoConferencias'
 import { useMega } from '@/lib/MegaContext'
 
@@ -62,6 +63,7 @@ export function FechamentoJogos({ dezenas }: FechamentoJogosProps) {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <BotaoConfirmarHistorico modo="fechamento" jogos={jogos} />
           <button
             type="button"
             onClick={() => void navigator.clipboard.writeText(buildJogosTxtCaixa(jogos).trim())}

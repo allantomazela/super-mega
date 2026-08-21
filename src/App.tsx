@@ -6,6 +6,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import Index from './pages/Index'
 import Resultados from './pages/Resultados'
 import Login from './pages/Login'
+import Perfil from './pages/Perfil'
 import Layout from './components/Layout'
 import { RequireAuth } from './components/RequireAuth'
 import { PostAuthRedirect } from './components/PostAuthRedirect'
@@ -27,6 +28,7 @@ const App = () => (
               <Route element={<Layout />}>
                 <Route path="/" element={<Index />} />
                 <Route path="/resultados" element={<Resultados />} />
+                <Route path="/perfil" element={<Perfil />} />
               </Route>
             </Route>
             <Route path="*" element={<PostAuthRedirect />} />

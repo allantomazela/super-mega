@@ -64,11 +64,13 @@ import { HistoricoConferencias } from '@/components/HistoricoConferencias'
 import { useHistoricoConferencias } from '@/hooks/useHistoricoConferencias'
 import { TorneioMode } from '@/components/TorneioMode'
 import { FechamentoPanel } from '@/components/FechamentoPanel'
+import { ComparadorOrcamento, type AplicarOrcamentoPayload } from '@/components/ComparadorOrcamento'
 import { ModeGuide } from '@/components/ModeGuide'
 import { VolanteOficial } from '@/components/VolanteOficial'
 import { UltimoSorteio } from '@/components/UltimoSorteio'
 import { FechamentoJogos } from '@/components/FechamentoJogos'
 import { SeletorAleatorias } from '@/components/SeletorAleatorias'
+import { BotaoConfirmarHistorico } from '@/components/BotaoConfirmarHistorico'
 import {
   MEGA_MAX_DEZENAS,
   MEGA_MIN_DEZENAS,
@@ -93,6 +95,8 @@ export default function Index() {
     resetAll,
     fechamentoN,
     fechamentoGarantia,
+    setFechamentoN,
+    setFechamentoGarantia,
   } = useMega()
   const { toast } = useToast()
   const { concursos } = useConcursos()
@@ -231,6 +235,35 @@ export default function Index() {
     if (isCincoJogos) handleGenerateFiveGames()
     else handleGenerateDesdobramento()
   }
+
+  const handleAplicarOrcamento = useCallback(
+    (payload: AplicarOrcamentoPayload) => {
+      setFechamentoGerado(false)
+      setIsLoading(false)
+      if (payload.modo === 'fechamento') {
+        if (payload.fechamentoGarantia) setFechamentoGarantia(payload.fechamentoGarantia)
+        if (payload.fechamentoN != null) setFechamentoN(payload.fechamentoN)
+        setMode('fechamento')
+        toast({
+          title: 'Estratégia de fechamento aplicada',
+          description: `Grupo ${payload.fechamentoN} · ajuste as dezenas se quiser e clique em Gerar Fechamento.`,
+        })
+        return
+      }
+      setMode(payload.modo)
+      toast({
+        title:
+          payload.modo === 'cinco-jogos'
+            ? 'Modo 5 Jogos ativado'
+            : payload.modo === 'desdobramento'
+              ? 'Modo Desdobramento ativado'
+              : 'Estratégia aplicada',
+        description: 'Monte o grupo e gere os jogos conforme o modo escolhido.',
+      })
+    },
+    [setFechamentoGarantia, setFechamentoN, setMode, toast],
+  )
+
 
   const handleGenerateFechamento = () => {
     if (count !== fechamentoN) return
@@ -654,7 +687,8 @@ export default function Index() {
                     permitirBuscaConcurso={false}
                     onConferir={handleConferirCincoJogos}
                   />
-                  <div className="flex justify-center sm:justify-start">
+                  <div className="flex justify-center sm:justify-start gap-2 flex-wrap">
+                    <BotaoConfirmarHistorico modo="cinco-jogos" jogos={liveResult.games} />
                     <PrintableVersion jogos={jogosComScore(liveResult.games)} modo="Modo 5 Jogos" />
                   </div>
                 </>
@@ -682,12 +716,15 @@ export default function Index() {
                   onTicketSizeChange={handleTicketSizeChange}
                 />
               ) : isFechamento ? (
-                <FechamentoPanel
-                  dezenas={selectedNumbers}
-                  gerado={fechamentoGerado}
-                  isLoading={isLoading}
-                  onGenerate={handleGenerateFechamento}
-                />
+                <>
+                  <ComparadorOrcamento onAplicar={handleAplicarOrcamento} />
+                  <FechamentoPanel
+                    dezenas={selectedNumbers}
+                    gerado={fechamentoGerado}
+                    isLoading={isLoading}
+                    onGenerate={handleGenerateFechamento}
+                  />
+                </>
               ) : (
                 <FiltersPanel
                   filters={filters}

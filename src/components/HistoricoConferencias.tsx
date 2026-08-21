@@ -71,6 +71,9 @@ export const HistoricoConferencias: React.FC<HistoricoConferenciasProps> = ({
                 ? `${historico.length} conferência${historico.length > 1 ? 's' : ''} salva${historico.length > 1 ? 's' : ''} localmente`
                 : 'Nenhuma conferência salva ainda'}
             </p>
+            <p className="text-[10px] text-zinc-600 mt-0.5">
+              Dados só desta conta (perfil privado)
+            </p>
           </div>
         </div>
 

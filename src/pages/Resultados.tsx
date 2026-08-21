@@ -56,6 +56,7 @@ import { ComparacaoConcurso, ConferenciaCallbackPayload } from '@/components/Com
 import { GameScoreRadar } from '@/components/RadarChart'
 import { HistoricoConferencias } from '@/components/HistoricoConferencias'
 import { useHistoricoConferencias } from '@/hooks/useHistoricoConferencias'
+import { BotaoConfirmarHistorico } from '@/components/BotaoConfirmarHistorico'
 
 const ITEMS_PER_PAGE = 24
 
@@ -683,6 +684,10 @@ export default function Resultados() {
               <ArrowUpDown className="w-4 h-4" />
               <span>{sortByScore ? 'Ordenado por Score' : 'Ordenar por Score'}</span>
             </button>
+            <BotaoConfirmarHistorico
+              modo="desdobramento"
+              jogos={scoreFilteredCombinations.slice(0, 40)}
+            />
             <PrintableVersion
               jogos={jogosComScore(scoreFilteredCombinations)}
               modo="Modo Desdobramento"

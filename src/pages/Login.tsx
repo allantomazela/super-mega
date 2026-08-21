@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { Navigate } from 'react-router-dom'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Sparkles } from 'lucide-react'
 import { useAuth } from '@/lib/AuthContext'
+
+const YEAR = new Date().getFullYear()
 
 export default function Login() {
   const { user, loading, signInGoogle } = useAuth()
@@ -10,7 +12,7 @@ export default function Login() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0d0f12] flex items-center justify-center">
+      <div className="min-h-screen bg-[#0a0c0f] flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-emerald-400 animate-spin" />
       </div>
     )
@@ -27,42 +29,97 @@ export default function Login() {
       await signInGoogle()
     } catch (error) {
       setEnviando(false)
-      setErro(error instanceof Error ? error.message : 'Não foi possível iniciar o login com Google.')
+      setErro(
+        error instanceof Error
+          ? error.message
+          : 'Não foi possível iniciar o login com Google.',
+      )
     }
   }
 
   return (
-    <div className="min-h-screen bg-[#0d0f12] flex items-center justify-center px-4">
-      <div className="w-full max-w-md rounded-2xl border border-[#262c34] bg-[#161a1f] p-8 shadow-xl">
-        <div className="flex flex-col items-center text-center mb-8">
-          <img
-            src={`${import.meta.env.BASE_URL}favicon.svg`}
-            alt="Otimizador Mega-Sena"
-            className="w-16 h-16 mb-4"
-          />
-          <h1 className="text-xl font-semibold text-white">Otimizador Estratégico</h1>
-          <p className="text-sm text-emerald-400 mt-1">Mega-Sena</p>
-          <p className="text-sm text-zinc-400 mt-4">
-            Entre com sua conta Google para gerar e conferir jogos.
+    <div className="min-h-screen relative overflow-hidden bg-[#0a0c0f] text-zinc-100 flex flex-col">
+      {/* Atmosfera */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            'radial-gradient(ellipse 80% 50% at 50% -10%, rgba(16,185,129,0.22), transparent 55%), radial-gradient(ellipse 60% 40% at 90% 80%, rgba(5,150,105,0.12), transparent 50%), radial-gradient(ellipse 50% 30% at 10% 70%, rgba(245,158,11,0.08), transparent 45%)',
+        }}
+      />
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.07]"
+        style={{
+          backgroundImage:
+            'linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px)',
+          backgroundSize: '48px 48px',
+        }}
+      />
+
+      <main className="relative flex-1 flex items-center justify-center px-4 py-10">
+        <div className="w-full max-w-lg">
+          <div className="text-center mb-8 space-y-3">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-emerald-500/30 bg-emerald-950/40 text-emerald-300 text-[11px] font-semibold tracking-wide">
+              <Sparkles className="w-3.5 h-3.5" />
+              Otimizador estratégico · Mega-Sena
+            </div>
+            <h1 className="font-black tracking-tight text-4xl sm:text-5xl leading-[1.05]">
+              <span className="bg-gradient-to-br from-emerald-200 via-white to-amber-200 bg-clip-text text-transparent">
+                MEGA DOS MILIONÁRIOS
+              </span>
+            </h1>
+            <p className="text-sm sm:text-base text-zinc-400 max-w-md mx-auto leading-relaxed">
+              Entre com Google para gerar fechamentos, guardar seu histórico privado e
+              receber alertas quando seus jogos forem premiados.
+            </p>
+          </div>
+
+          <div className="rounded-3xl border border-[#2a313c] bg-[#12161b]/90 backdrop-blur-md p-7 sm:p-8 shadow-[0_20px_60px_rgba(0,0,0,0.45)]">
+            <div className="flex flex-col items-center text-center mb-6">
+              <img
+                src={`${import.meta.env.BASE_URL}favicon.svg`}
+                alt=""
+                className="w-14 h-14 mb-3 rounded-2xl border border-emerald-500/35 shadow-[0_0_24px_rgba(16,185,129,0.25)]"
+              />
+              <p className="text-sm text-zinc-300">Acesso exclusivo à sua conta</p>
+              <p className="text-[11px] text-zinc-500 mt-1">
+                Seu histórico não é compartilhado com outros usuários.
+              </p>
+            </div>
+
+            {erro ? (
+              <p className="mb-4 text-sm text-red-400 text-center" role="alert">
+                {erro}
+              </p>
+            ) : null}
+
+            <button
+              type="button"
+              onClick={() => void entrarComGoogle()}
+              disabled={enviando}
+              className="w-full h-12 rounded-xl bg-white text-zinc-900 font-semibold text-sm flex items-center justify-center gap-3 hover:bg-zinc-100 disabled:opacity-70 transition-colors shadow-lg"
+            >
+              {enviando ? <Loader2 className="w-5 h-5 animate-spin" /> : <GoogleIcon />}
+              Continuar com Google
+            </button>
+          </div>
+        </div>
+      </main>
+
+      <footer className="relative border-t border-[#1e242c] bg-[#0a0c0f]/80 px-4 py-6">
+        <div className="max-w-2xl mx-auto text-center space-y-2">
+          <p className="text-[11px] text-zinc-500 leading-relaxed">
+            Este site/sistema <strong className="text-zinc-400">não garante acertividade</strong>{' '}
+            nem prêmios. Ele é baseado em cálculos de estatística e probabilidade que ajudam a
+            decidir os números a serem jogados para se ter mais chance de premiação — sempre com
+            responsabilidade.
+          </p>
+          <p className="text-[11px] text-zinc-600">
+            © {YEAR} MEGA DOS MILIONÁRIOS. Todos os direitos reservados. Jogue com responsabilidade
+            (+18).
           </p>
         </div>
-
-        {erro ? (
-          <p className="mb-4 text-sm text-red-400 text-center" role="alert">
-            {erro}
-          </p>
-        ) : null}
-
-        <button
-          type="button"
-          onClick={() => void entrarComGoogle()}
-          disabled={enviando}
-          className="w-full h-12 rounded-xl bg-white text-zinc-900 font-medium text-sm flex items-center justify-center gap-3 hover:bg-zinc-100 disabled:opacity-70 transition-colors"
-        >
-          {enviando ? <Loader2 className="w-5 h-5 animate-spin" /> : <GoogleIcon />}
-          Continuar com Google
-        </button>
-      </div>
+      </footer>
     </div>
   )
 }

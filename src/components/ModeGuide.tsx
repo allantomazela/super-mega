@@ -36,10 +36,10 @@ const MODES: {
   {
     key: 'fechamento',
     label: 'Fechamento',
-    hint: 'Matrizes verificadas (10–12)',
+    hint: 'Orçamento · matrizes 10–12',
     icon: Grid3x3,
-    how: 'Escolha um tamanho de grupo com matriz verificada (hoje: 10, 11 ou 12 conforme a garantia) e clique em Gerar Fechamento. O volante da Caixa aceita até 20 dezenas, mas o fechamento L(n,6,6,t) só gera jogos onde há tabela validada — 13–20 ainda não. Para grupos grandes use Desdobramento ou 5 Jogos.',
-    when: 'Use quando quiser reduzir C(n,6) a poucos volantes simples com garantia combinatória — não inventamos tabelas sem verificação.',
+    how: 'Use o comparador de orçamento para ver custo × garantia. Escolha um tamanho com matriz verificada (10–12) e clique em Gerar Fechamento. Garantia só vale se as 6 sorteadas estiverem no grupo. 13–20 ainda sem matriz — use Desdobramento ou 5 Jogos.',
+    when: 'Use quando quiser reduzir C(n,6) a poucos volantes com garantia combinatória e decidir pelo orçamento, não pela intuição.',
   },
 ]
 
