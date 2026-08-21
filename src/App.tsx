@@ -6,6 +6,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import Index from './pages/Index'
 import Resultados from './pages/Resultados'
 import Login from './pages/Login'
+import Cadastro from './pages/Cadastro'
 import Perfil from './pages/Perfil'
 import Layout from './components/Layout'
 import { RequireAuth } from './components/RequireAuth'
@@ -24,6 +25,7 @@ const App = () => (
           <Sonner />
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/cadastro" element={<Cadastro />} />
             <Route element={<RequireAuth />}>
               <Route element={<Layout />}>
                 <Route path="/" element={<Index />} />
