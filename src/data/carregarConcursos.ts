@@ -98,26 +98,34 @@ export async function buscarConcursoPorNumero(numero: number): Promise<ConcursoH
 /**
  * Último concurso: sempre a API oficial da Caixa.
  * Histórico: snapshot Neon (preenchido pelo sync oficial) e, se faltar, a própria Caixa.
+ * @param quantidade Limite máximo. Use `Infinity` / número alto para o histórico completo.
  */
 export async function carregarConcursos(quantidade = 50): Promise<ResultadoCargaConcursos> {
+  const limite = Number.isFinite(quantidade) ? Math.max(1, Math.floor(quantidade)) : Number.MAX_SAFE_INTEGER
   const [oficial, neon] = await Promise.all([buscarUltimoResultadoOficial(), buscarConcursosDoSnapshot()])
   const atual = oficial ? oficialParaHistorico(oficial) : null
 
   if (neon && neon.length >= 10) {
     const semDuplicata = atual ? neon.filter((c) => c.numero !== atual.numero) : neon
     const concursos = atual ? [atual, ...semDuplicata] : neon
-    return { concursos: concursos.slice(0, Math.max(quantidade, concursos.length)), origem: atual ? 'api' : 'neon' }
+    return { concursos: concursos.slice(0, limite), origem: atual ? 'api' : 'neon' }
   }
 
-  const aoVivo = await buscarConcursosAoVivo(quantidade)
+  const aoVivoQtd = Math.min(limite, 50)
+  const aoVivo = await buscarConcursosAoVivo(aoVivoQtd)
   if (aoVivo && aoVivo.length >= 10) {
-    return { concursos: aoVivo, origem: 'api' }
+    return { concursos: aoVivo.slice(0, limite), origem: 'api' }
   }
 
   if (atual) {
     const resto = CONCURSOS_HISTORICOS.filter((c) => c.numero !== atual.numero)
-    return { concursos: [atual, ...resto], origem: 'api' }
+    return { concursos: [atual, ...resto].slice(0, limite), origem: 'api' }
   }
 
-  return { concursos: CONCURSOS_HISTORICOS, origem: 'estatica' }
+  return { concursos: CONCURSOS_HISTORICOS.slice(0, limite), origem: 'estatica' }
+}
+
+/** Carrega o maior histórico disponível (snapshot Neon completo quando existir). */
+export function carregarHistoricoCompleto(): Promise<ResultadoCargaConcursos> {
+  return carregarConcursos(Number.MAX_SAFE_INTEGER)
 }

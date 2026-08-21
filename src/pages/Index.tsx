@@ -57,6 +57,7 @@ import {
 import { estimatePopularityFactor } from '@/lib/popularityModel'
 import { ToggleSwitch } from '@/components/ToggleSwitch'
 import { SimulacaoHistorica } from '@/components/SimulacaoHistorica'
+import { ValidacaoHistorica } from '@/components/ValidacaoHistorica'
 import { PrintableVersion, jogosComScore } from '@/components/PrintableVersion'
 import { ComparacaoConcurso, ConferenciaCallbackPayload } from '@/components/ComparacaoConcurso'
 import { GameScoreRadar } from '@/components/RadarChart'
@@ -674,6 +675,9 @@ export default function Index() {
                 />
               )}
               {isCincoJogos && liveResult && <ProbabilisticAnalysis result={liveResult} />}
+              {isCincoJogos && liveResult && (
+                <ValidacaoHistorica jogos={liveResult.games} />
+              )}
               {isCincoJogos && liveResult && (
                 <SimulacaoHistorica jogos={liveResult.games} conjunto />
               )}

@@ -50,6 +50,7 @@ import { estimatePopularityFactor } from '@/lib/popularityModel'
 import { combinacoesSimples, precoOficialCaixa } from '@/lib/caixaOficial'
 import { ScoreHistogram } from '@/components/ScoreHistogram'
 import { SimulacaoHistorica } from '@/components/SimulacaoHistorica'
+import { ValidacaoHistorica } from '@/components/ValidacaoHistorica'
 import { PrintableVersion, jogosComScore } from '@/components/PrintableVersion'
 import { VolanteOficial } from '@/components/VolanteOficial'
 import { ComparacaoConcurso, ConferenciaCallbackPayload } from '@/components/ComparacaoConcurso'
@@ -606,7 +607,10 @@ export default function Resultados() {
         />
       )}
 
-      {/* Simulação Histórica (apenas jogos filtrados por score) */}
+      {/* Validação / simulação histórica (jogos filtrados por score) */}
+      {scoreFilteredCombinations.length > 0 && (
+        <ValidacaoHistorica jogos={scoreFilteredCombinations} />
+      )}
       {scoreFilteredCombinations.length > 0 && (
         <SimulacaoHistorica jogos={scoreFilteredCombinations} conjunto={false} />
       )}

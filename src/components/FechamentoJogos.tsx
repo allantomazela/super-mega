@@ -12,6 +12,7 @@ import { formatTwoDigits, formatGameString, buildJogosTxtCaixa } from '@/lib/meg
 import { ComparacaoConcurso } from '@/components/ComparacaoConcurso'
 import { VolanteOficial } from '@/components/VolanteOficial'
 import { SimulacaoHistorica } from '@/components/SimulacaoHistorica'
+import { ValidacaoHistorica } from '@/components/ValidacaoHistorica'
 import { BotaoConfirmarHistorico } from '@/components/BotaoConfirmarHistorico'
 import { useHistoricoConferencias } from '@/hooks/useHistoricoConferencias'
 import { useMega } from '@/lib/MegaContext'
@@ -105,6 +106,7 @@ export function FechamentoJogos({ dezenas }: FechamentoJogosProps) {
           </li>
         ))}
       </ol>
+      <ValidacaoHistorica jogos={jogos} />
       <SimulacaoHistorica jogos={jogos} conjunto />
       <ComparacaoConcurso
         jogos={jogos}
