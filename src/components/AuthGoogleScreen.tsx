@@ -39,9 +39,6 @@ const COPY: Record<
   },
 }
 
-const DISCLAIMER =
-  'Este sistema não garante acertividade nem prêmios. Usa estatística e probabilidade para apoiar a escolha dos números.'
-
 interface AuthGoogleScreenProps {
   modo: AuthModo
 }
@@ -84,25 +81,26 @@ export function AuthGoogleScreen({ modo }: AuthGoogleScreenProps) {
     <div className={styles.screen}>
       <AuthBackdrop />
 
+      {/* Reserva a faixa central da arte (medalhão + MEGA DOS MILIONÁRIOS) */}
       <div className={styles.brandSpace} aria-hidden />
 
       <main className={styles.main}>
         <div className={styles.panel}>
+          <header className={styles.headingBlock}>
+            <h1 className={styles.title}>{copy.titulo}</h1>
+            <p className={styles.linha}>{copy.linha}</p>
+          </header>
+
           <nav className={styles.nav} aria-label="Modo de acesso">
-            <ModoLink to="/login" ativo={modo === 'login'} delay="0.05s">
+            <ModoLink to="/login" ativo={modo === 'login'}>
               Entrar
             </ModoLink>
-            <ModoLink to="/cadastro" ativo={modo === 'cadastro'} delay="0.12s">
+            <ModoLink to="/cadastro" ativo={modo === 'cadastro'}>
               Criar conta
             </ModoLink>
           </nav>
 
           <div className={styles.card}>
-            <header className={styles.header}>
-              <h1 className={styles.title}>{copy.titulo}</h1>
-              <p className={styles.linha}>{copy.linha}</p>
-            </header>
-
             {erro ? (
               <p className={styles.erro} role="alert">
                 {erro}
@@ -137,8 +135,15 @@ export function AuthGoogleScreen({ modo }: AuthGoogleScreenProps) {
 
       <footer className={styles.footer}>
         <div className={styles.footerInner}>
-          <p className={styles.disclaimer}>{DISCLAIMER}</p>
-          <p className={styles.copy}>© {YEAR} MEGA DOS MILIONÁRIOS · +18</p>
+          <p className={styles.disclaimer}>
+            Este site/sistema <strong>não garante acertividade</strong> nem prêmios. Ele é baseado
+            em cálculos de estatística e probabilidade que ajudam a decidir os números a serem
+            jogados para se ter mais chance de premiação.
+          </p>
+          <p className={styles.copy}>
+            © {YEAR} MEGA DOS MILIONÁRIOS. Todos os direitos reservados. Jogue com responsabilidade
+            (+18).
+          </p>
         </div>
       </footer>
     </div>
@@ -163,22 +168,18 @@ function ModoLink({
   to,
   ativo,
   children,
-  delay,
 }: {
   to: string
   ativo: boolean
   children: string
-  delay: string
 }) {
   return (
     <Link
       to={to}
       className={ativo ? styles.modoLinkAtivo : styles.modoLink}
-      style={{ animationDelay: delay }}
       aria-current={ativo ? 'page' : undefined}
     >
       {children}
-      <span className={ativo ? styles.modoUnderlineAtivo : styles.modoUnderline} />
     </Link>
   )
 }
