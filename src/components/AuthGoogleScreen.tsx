@@ -3,10 +3,11 @@ import { Link, Navigate } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import { useAuth } from '@/lib/AuthContext'
 import styles from './AuthGoogleScreen.module.css'
+import logoMega from '@/assets/logo-mega.svg'
 
 const YEAR = new Date().getFullYear()
 export const AUTH_BG = `${import.meta.env.BASE_URL}login-bg.jpg`
-export const AUTH_LOGO = `${import.meta.env.BASE_URL}logo-mega.svg`
+export const AUTH_LOGO = logoMega
 
 export type AuthModo = 'login' | 'cadastro'
 

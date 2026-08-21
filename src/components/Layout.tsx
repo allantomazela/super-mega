@@ -3,6 +3,7 @@ import { Award, LogOut, User } from 'lucide-react'
 import { useMega, MODE_LABELS } from '@/lib/MegaContext'
 import { useAuth } from '@/lib/AuthContext'
 import { AlertaPremiosHistorico } from '@/components/AlertaPremiosHistorico'
+import logoMega from '@/assets/logo-mega.svg'
 
 export default function Layout() {
   const location = useLocation()
@@ -25,7 +26,7 @@ export default function Layout() {
             title="Voltar ao início"
           >
             <img
-              src={`${import.meta.env.BASE_URL}logo-mega.svg`}
+              src={logoMega}
               alt="MEGA DOS MILIONÁRIOS"
               className="w-10 h-10 rounded-xl border border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.3)]"
             />
