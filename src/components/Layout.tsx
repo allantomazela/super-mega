@@ -25,12 +25,15 @@ export default function Layout() {
             title="Voltar ao início"
           >
             <img
-              src={`${import.meta.env.BASE_URL}favicon.svg`}
+              src={`${import.meta.env.BASE_URL}logo-mega.svg`}
               alt="MEGA DOS MILIONÁRIOS"
               className="w-10 h-10 rounded-xl border border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.3)]"
             />
             <div className="flex flex-col">
-              <span className="text-sm sm:text-base font-extrabold text-white tracking-tight leading-tight">
+              <span
+                className="text-sm sm:text-base font-extrabold text-white tracking-tight leading-tight"
+                style={{ fontFamily: "'Syne', 'Outfit', system-ui, sans-serif" }}
+              >
                 MEGA DOS MILIONÁRIOS
               </span>
               <span className="text-xs text-emerald-400 font-medium tracking-wide">

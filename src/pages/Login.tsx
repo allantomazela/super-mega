@@ -1,9 +1,19 @@
 import { useState } from 'react'
 import { Navigate } from 'react-router-dom'
-import { Loader2, Sparkles } from 'lucide-react'
+import { Loader2, Lock, ShieldCheck } from 'lucide-react'
 import { useAuth } from '@/lib/AuthContext'
 
 const YEAR = new Date().getFullYear()
+const LOGO = `${import.meta.env.BASE_URL}logo-mega.svg`
+
+const BOLA_SLOTS = [
+  { n: '07', top: '12%', left: '8%', delay: '0s', size: '3.25rem' },
+  { n: '23', top: '22%', right: '10%', delay: '0.6s', size: '2.75rem' },
+  { n: '41', bottom: '28%', left: '6%', delay: '1.1s', size: '3rem' },
+  { n: '55', bottom: '18%', right: '8%', delay: '1.7s', size: '2.5rem' },
+  { n: '12', top: '48%', left: '4%', delay: '0.3s', size: '2.25rem' },
+  { n: '36', top: '58%', right: '5%', delay: '1.4s', size: '2.85rem' },
+] as const
 
 export default function Login() {
   const { user, loading, signInGoogle } = useAuth()
@@ -12,8 +22,14 @@ export default function Login() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0a0c0f] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-emerald-400 animate-spin" />
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ background: '#07090c', fontFamily: "'Outfit', system-ui, sans-serif" }}
+      >
+        <div className="flex flex-col items-center gap-3">
+          <img src={LOGO} alt="" className="w-16 h-16 animate-pulse rounded-2xl" />
+          <Loader2 className="w-6 h-6 text-emerald-400 animate-spin" />
+        </div>
       </div>
     )
   }
@@ -38,57 +54,131 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-[#0a0c0f] text-zinc-100 flex flex-col">
-      {/* Atmosfera */}
+    <div
+      className="min-h-screen relative overflow-hidden flex flex-col text-zinc-100"
+      style={{ background: '#07090c', fontFamily: "'Outfit', system-ui, sans-serif" }}
+    >
+      <style>{`
+        @keyframes megaFloat {
+          0%, 100% { transform: translateY(0) rotate(0deg); }
+          50% { transform: translateY(-12px) rotate(4deg); }
+        }
+        @keyframes megaGlow {
+          0%, 100% { opacity: 0.45; transform: scale(1); }
+          50% { opacity: 0.75; transform: scale(1.05); }
+        }
+        @keyframes megaRise {
+          from { opacity: 0; transform: translateY(18px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .mega-float { animation: megaFloat 5.5s ease-in-out infinite; }
+        .mega-glow { animation: megaGlow 4s ease-in-out infinite; }
+        .mega-rise { animation: megaRise 0.7s ease-out both; }
+      `}</style>
+
+      {/* Fundo atmosférico */}
       <div
-        className="pointer-events-none absolute inset-0"
+        className="pointer-events-none absolute inset-0 mega-glow"
         style={{
           background:
-            'radial-gradient(ellipse 80% 50% at 50% -10%, rgba(16,185,129,0.22), transparent 55%), radial-gradient(ellipse 60% 40% at 90% 80%, rgba(5,150,105,0.12), transparent 50%), radial-gradient(ellipse 50% 30% at 10% 70%, rgba(245,158,11,0.08), transparent 45%)',
+            'radial-gradient(ellipse 90% 55% at 50% -5%, rgba(16,185,129,0.28), transparent 58%), radial-gradient(ellipse 50% 40% at 100% 60%, rgba(245,158,11,0.12), transparent 50%), radial-gradient(ellipse 45% 35% at 0% 80%, rgba(5,150,105,0.16), transparent 50%)',
         }}
       />
       <div
-        className="pointer-events-none absolute inset-0 opacity-[0.07]"
+        className="pointer-events-none absolute inset-0 opacity-[0.06]"
         style={{
           backgroundImage:
-            'linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px)',
-          backgroundSize: '48px 48px',
+            'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.55) 1px, transparent 0)',
+          backgroundSize: '28px 28px',
         }}
       />
 
-      <main className="relative flex-1 flex items-center justify-center px-4 py-10">
-        <div className="w-full max-w-lg">
-          <div className="text-center mb-8 space-y-3">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-emerald-500/30 bg-emerald-950/40 text-emerald-300 text-[11px] font-semibold tracking-wide">
-              <Sparkles className="w-3.5 h-3.5" />
-              Otimizador estratégico · Mega-Sena
+      {/* Bolas flutuantes */}
+      {BOLA_SLOTS.map((b) => (
+        <div
+          key={b.n}
+          className="pointer-events-none absolute mega-float hidden sm:flex items-center justify-center rounded-full font-bold text-[#064e3b] shadow-[0_8px_24px_rgba(0,0,0,0.4)]"
+          style={{
+            top: 'top' in b ? b.top : undefined,
+            bottom: 'bottom' in b ? b.bottom : undefined,
+            left: 'left' in b ? b.left : undefined,
+            right: 'right' in b ? b.right : undefined,
+            width: b.size,
+            height: b.size,
+            fontSize: '0.8rem',
+            animationDelay: b.delay,
+            background:
+              'radial-gradient(circle at 32% 28%, #a7f3d0 0%, #34d399 42%, #059669 100%)',
+            border: '2px solid rgba(253,230,138,0.55)',
+          }}
+          aria-hidden
+        >
+          {b.n}
+        </div>
+      ))}
+
+      <main className="relative flex-1 flex items-center justify-center px-4 py-12 sm:py-16">
+        <div className="w-full max-w-md mega-rise">
+          {/* Marca */}
+          <div className="flex flex-col items-center text-center mb-8">
+            <div className="relative mb-5">
+              <div
+                className="absolute inset-[-12px] rounded-[2rem] blur-2xl opacity-60"
+                style={{
+                  background: 'radial-gradient(circle, rgba(16,185,129,0.55), transparent 70%)',
+                }}
+              />
+              <img
+                src={LOGO}
+                alt="MEGA DOS MILIONÁRIOS"
+                className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-[1.75rem] shadow-[0_12px_40px_rgba(0,0,0,0.5)] ring-1 ring-amber-300/30"
+              />
             </div>
-            <h1 className="font-black tracking-tight text-4xl sm:text-5xl leading-[1.05]">
-              <span className="bg-gradient-to-br from-emerald-200 via-white to-amber-200 bg-clip-text text-transparent">
-                MEGA DOS MILIONÁRIOS
+            <p className="text-[11px] sm:text-xs tracking-[0.28em] uppercase text-amber-200/80 font-semibold mb-2">
+              Loterias · Estratégia · Probabilidade
+            </p>
+            <h1
+              className="text-[2rem] sm:text-[2.65rem] leading-[1.05] font-extrabold tracking-tight"
+              style={{ fontFamily: "'Syne', 'Outfit', sans-serif" }}
+            >
+              <span
+                style={{
+                  background: 'linear-gradient(135deg, #ecfdf5 0%, #fde68a 48%, #fbbf24 100%)',
+                  WebkitBackgroundClip: 'text',
+                  backgroundClip: 'text',
+                  color: 'transparent',
+                }}
+              >
+                MEGA DOS
+                <br />
+                MILIONÁRIOS
               </span>
             </h1>
-            <p className="text-sm sm:text-base text-zinc-400 max-w-md mx-auto leading-relaxed">
-              Entre com Google para gerar fechamentos, guardar seu histórico privado e
-              receber alertas quando seus jogos forem premiados.
+            <p className="mt-4 text-sm text-zinc-400 max-w-sm leading-relaxed">
+              Monte fechamentos inteligentes, guarde seu histórico privado e acompanhe
+              alertas de premiação — tudo com a sua conta Google.
             </p>
           </div>
 
-          <div className="rounded-3xl border border-[#2a313c] bg-[#12161b]/90 backdrop-blur-md p-7 sm:p-8 shadow-[0_20px_60px_rgba(0,0,0,0.45)]">
-            <div className="flex flex-col items-center text-center mb-6">
-              <img
-                src={`${import.meta.env.BASE_URL}favicon.svg`}
-                alt=""
-                className="w-14 h-14 mb-3 rounded-2xl border border-emerald-500/35 shadow-[0_0_24px_rgba(16,185,129,0.25)]"
-              />
-              <p className="text-sm text-zinc-300">Acesso exclusivo à sua conta</p>
-              <p className="text-[11px] text-zinc-500 mt-1">
-                Seu histórico não é compartilhado com outros usuários.
-              </p>
+          {/* Card de login */}
+          <div
+            className="rounded-[1.75rem] border border-white/10 p-6 sm:p-8 shadow-[0_24px_80px_rgba(0,0,0,0.55)]"
+            style={{
+              background:
+                'linear-gradient(165deg, rgba(22,28,34,0.95) 0%, rgba(12,16,20,0.98) 100%)',
+              backdropFilter: 'blur(16px)',
+            }}
+          >
+            <div className="flex items-center justify-center gap-2 text-[11px] text-emerald-300/90 mb-5">
+              <Lock className="w-3.5 h-3.5" />
+              <span>Acesso seguro · histórico só seu</span>
             </div>
 
             {erro ? (
-              <p className="mb-4 text-sm text-red-400 text-center" role="alert">
+              <p
+                className="mb-4 text-sm text-red-300 text-center rounded-xl border border-red-500/30 bg-red-950/40 px-3 py-2"
+                role="alert"
+              >
                 {erro}
               </p>
             ) : null}
@@ -97,26 +187,42 @@ export default function Login() {
               type="button"
               onClick={() => void entrarComGoogle()}
               disabled={enviando}
-              className="w-full h-12 rounded-xl bg-white text-zinc-900 font-semibold text-sm flex items-center justify-center gap-3 hover:bg-zinc-100 disabled:opacity-70 transition-colors shadow-lg"
+              className="group w-full h-[3.25rem] rounded-2xl bg-white text-zinc-900 font-semibold text-[15px] flex items-center justify-center gap-3 hover:bg-zinc-50 disabled:opacity-70 transition-all shadow-[0_8px_30px_rgba(255,255,255,0.12)] hover:shadow-[0_10px_36px_rgba(255,255,255,0.18)] hover:-translate-y-0.5 active:translate-y-0"
             >
-              {enviando ? <Loader2 className="w-5 h-5 animate-spin" /> : <GoogleIcon />}
-              Continuar com Google
+              {enviando ? (
+                <Loader2 className="w-5 h-5 animate-spin text-zinc-700" />
+              ) : (
+                <span className="flex items-center justify-center w-8 h-8 rounded-full bg-zinc-100 group-hover:bg-white border border-zinc-200">
+                  <GoogleIcon />
+                </span>
+              )}
+              {enviando ? 'Conectando…' : 'Entrar com Google'}
             </button>
+
+            <div className="mt-5 flex items-start gap-2 text-[11px] text-zinc-500 leading-relaxed">
+              <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5 text-emerald-400/80" />
+              <p>
+                Usamos o login Google apenas para identificar sua conta. Seus jogos e
+                conferências ficam isolados — outros usuários não veem seu perfil.
+              </p>
+            </div>
           </div>
+
+          <p className="mt-6 text-center text-[10px] text-zinc-600 tracking-wide">
+            Mega-Sena · +18 · Jogue com responsabilidade
+          </p>
         </div>
       </main>
 
-      <footer className="relative border-t border-[#1e242c] bg-[#0a0c0f]/80 px-4 py-6">
-        <div className="max-w-2xl mx-auto text-center space-y-2">
+      <footer className="relative border-t border-white/5 bg-black/30 px-4 py-6">
+        <div className="max-w-xl mx-auto text-center space-y-2">
           <p className="text-[11px] text-zinc-500 leading-relaxed">
             Este site/sistema <strong className="text-zinc-400">não garante acertividade</strong>{' '}
             nem prêmios. Ele é baseado em cálculos de estatística e probabilidade que ajudam a
-            decidir os números a serem jogados para se ter mais chance de premiação — sempre com
-            responsabilidade.
+            decidir os números a serem jogados para se ter mais chance de premiação.
           </p>
           <p className="text-[11px] text-zinc-600">
-            © {YEAR} MEGA DOS MILIONÁRIOS. Todos os direitos reservados. Jogue com responsabilidade
-            (+18).
+            © {YEAR} MEGA DOS MILIONÁRIOS. Todos os direitos reservados.
           </p>
         </div>
       </footer>
@@ -126,7 +232,7 @@ export default function Login() {
 
 function GoogleIcon() {
   return (
-    <svg className="w-5 h-5" viewBox="0 0 24 24" aria-hidden="true">
+    <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" aria-hidden="true">
       <path
         fill="#4285F4"
         d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
