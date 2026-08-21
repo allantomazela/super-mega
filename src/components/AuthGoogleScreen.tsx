@@ -1,7 +1,8 @@
-import { useState, type ReactNode } from 'react'
+import { useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
-import { Loader2, Lock, ShieldCheck, UserPlus, LogIn } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { useAuth } from '@/lib/AuthContext'
+import styles from './AuthGoogleScreen.module.css'
 
 const YEAR = new Date().getFullYear()
 export const AUTH_BG = `${import.meta.env.BASE_URL}login-bg.jpg`
@@ -12,80 +13,53 @@ export type AuthModo = 'login' | 'cadastro'
 const COPY: Record<
   AuthModo,
   {
-    eyebrow: string
     titulo: string
-    descricao: string
-    selo: string
+    linha: string
     botao: string
     botaoLoading: string
     erroPadrao: string
-    rodapeAcao: ReactNode
+    alternar: { pergunta: string; rotulo: string; to: string }
   }
 > = {
   login: {
-    eyebrow: 'Acesso à sua conta',
-    titulo: 'Entrar',
-    descricao:
-      'Entre com Google para gerar jogos, guardar histórico privado e receber alertas de premiação.',
-    selo: 'Login seguro · dados só seus',
-    botao: 'Entrar com Google',
+    titulo: 'Bem-vindo de volta',
+    linha: 'Acesse com Google para continuar nos seus jogos.',
+    botao: 'Continuar com Google',
     botaoLoading: 'Conectando…',
     erroPadrao: 'Não foi possível iniciar o login com Google.',
-    rodapeAcao: (
-      <>
-        Ainda não tem conta?{' '}
-        <Link to="/cadastro" className="text-amber-200 font-semibold hover:text-amber-100 underline-offset-2 hover:underline">
-          Criar conta com Google
-        </Link>
-      </>
-    ),
+    alternar: { pergunta: 'Primeiro acesso?', rotulo: 'Criar conta', to: '/cadastro' },
   },
   cadastro: {
-    eyebrow: 'Primeiro acesso',
-    titulo: 'Criar conta',
-    descricao:
-      'Cadastre-se com a sua conta Google. Na primeira autorização, seu perfil privado é criado automaticamente — sem senha extra.',
-    selo: 'Cadastro seguro via Google',
+    titulo: 'Crie sua conta',
+    linha: 'Na primeira autorização, o perfil privado é criado com o Google.',
     botao: 'Cadastrar com Google',
     botaoLoading: 'Abrindo Google…',
     erroPadrao: 'Não foi possível iniciar o cadastro com Google.',
-    rodapeAcao: (
-      <>
-        Já tem conta?{' '}
-        <Link to="/login" className="text-amber-200 font-semibold hover:text-amber-100 underline-offset-2 hover:underline">
-          Entrar com Google
-        </Link>
-      </>
-    ),
+    alternar: { pergunta: 'Já tem conta?', rotulo: 'Entrar', to: '/login' },
   },
 }
+
+const DISCLAIMER =
+  'Este sistema não garante acertividade nem prêmios. Usa estatística e probabilidade para apoiar a escolha dos números.'
 
 interface AuthGoogleScreenProps {
   modo: AuthModo
 }
 
-/** Tela pública de auth (login ou cadastro) — ambos usam OAuth Google do Neon Auth. */
+/** Tela pública de auth — a marca fica no wallpaper; o painel só conduz o CTA. */
 export function AuthGoogleScreen({ modo }: AuthGoogleScreenProps) {
   const { user, loading, signInGoogle } = useAuth()
   const [enviando, setEnviando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const copy = COPY[modo]
-  const IconModo = modo === 'cadastro' ? UserPlus : LogIn
 
   if (loading) {
     return (
-      <div
-        className="min-h-screen flex items-center justify-center relative"
-        style={{ fontFamily: "'Outfit', system-ui, sans-serif" }}
-      >
-        <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: `url(${AUTH_BG})` }}
-        />
-        <div className="absolute inset-0 bg-black/55" />
+      <div className={styles.screenLoading}>
+        <AuthBackdrop />
         <div className="relative flex flex-col items-center gap-3">
-          <img src={AUTH_LOGO} alt="" className="w-16 h-16 animate-pulse rounded-2xl" />
-          <Loader2 className="w-6 h-6 text-amber-200 animate-spin" />
+          <img src={AUTH_LOGO} alt="" className="w-14 h-14 animate-pulse rounded-2xl" />
+          <Loader2 className={`animate-spin ${styles.spinnerGold}`} />
         </div>
       </div>
     )
@@ -107,111 +81,30 @@ export function AuthGoogleScreen({ modo }: AuthGoogleScreenProps) {
   }
 
   return (
-    <div
-      className="min-h-screen relative overflow-hidden flex flex-col text-zinc-100"
-      style={{ fontFamily: "'Outfit', system-ui, sans-serif" }}
-    >
-      <style>{`
-        @keyframes megaRise {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .mega-rise { animation: megaRise 0.75s ease-out both; }
-      `}</style>
+    <div className={styles.screen}>
+      <AuthBackdrop />
 
-      <div
-        className="pointer-events-none absolute inset-0 bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: `url(${AUTH_BG})` }}
-        role="img"
-        aria-label="MEGA DOS MILIONÁRIOS"
-      />
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            'linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.15) 35%, rgba(0,0,0,0.25) 55%, rgba(3,10,8,0.82) 78%, rgba(2,6,5,0.94) 100%)',
-        }}
-      />
+      <div className={styles.brandSpace} aria-hidden />
 
-      <main className="relative flex-1 flex flex-col justify-end sm:justify-center items-center px-4 pb-8 pt-[42vh] sm:pt-8 sm:pb-10">
-        <div className="w-full max-w-md mega-rise">
-          {/* Toggle visual Login | Cadastro */}
-          <div className="mb-3 flex rounded-2xl border border-white/10 bg-black/35 p-1 backdrop-blur-sm">
-            <Link
-              to="/login"
-              className={`flex-1 h-10 rounded-xl text-xs font-bold inline-flex items-center justify-center gap-1.5 transition-colors ${
-                modo === 'login'
-                  ? 'bg-amber-400/90 text-[#0a1f14] shadow'
-                  : 'text-zinc-400 hover:text-white'
-              }`}
-            >
-              <LogIn className="w-3.5 h-3.5" />
+      <main className={styles.main}>
+        <div className={styles.panel}>
+          <nav className={styles.nav} aria-label="Modo de acesso">
+            <ModoLink to="/login" ativo={modo === 'login'} delay="0.05s">
               Entrar
-            </Link>
-            <Link
-              to="/cadastro"
-              className={`flex-1 h-10 rounded-xl text-xs font-bold inline-flex items-center justify-center gap-1.5 transition-colors ${
-                modo === 'cadastro'
-                  ? 'bg-amber-400/90 text-[#0a1f14] shadow'
-                  : 'text-zinc-400 hover:text-white'
-              }`}
-            >
-              <UserPlus className="w-3.5 h-3.5" />
+            </ModoLink>
+            <ModoLink to="/cadastro" ativo={modo === 'cadastro'} delay="0.12s">
               Criar conta
-            </Link>
-          </div>
+            </ModoLink>
+          </nav>
 
-          <div
-            className="rounded-[1.75rem] border border-amber-200/20 p-6 sm:p-7 shadow-[0_24px_80px_rgba(0,0,0,0.55)]"
-            style={{
-              background:
-                'linear-gradient(165deg, rgba(8,18,14,0.88) 0%, rgba(4,12,10,0.94) 100%)',
-              backdropFilter: 'blur(18px)',
-            }}
-          >
-            <div className="text-center mb-5">
-              <p
-                className="text-[11px] tracking-[0.22em] uppercase text-amber-200/85 font-semibold mb-1"
-                style={{ fontFamily: "'Syne', 'Outfit', sans-serif" }}
-              >
-                {copy.eyebrow}
-              </p>
-              <h1
-                className="text-xl sm:text-2xl font-extrabold text-white mb-2"
-                style={{ fontFamily: "'Syne', 'Outfit', sans-serif" }}
-              >
-                {copy.titulo}
-              </h1>
-              <p className="text-sm text-zinc-300 leading-relaxed">{copy.descricao}</p>
-            </div>
-
-            {modo === 'cadastro' ? (
-              <ul className="mb-5 space-y-2 text-[11px] text-zinc-400">
-                <li className="flex gap-2">
-                  <span className="text-amber-300">✓</span>
-                  Perfil privado vinculado ao seu Google
-                </li>
-                <li className="flex gap-2">
-                  <span className="text-amber-300">✓</span>
-                  Histórico de jogos e alertas de premiação
-                </li>
-                <li className="flex gap-2">
-                  <span className="text-amber-300">✓</span>
-                  Sem criar senha — autenticação oficial do Google
-                </li>
-              </ul>
-            ) : null}
-
-            <div className="flex items-center justify-center gap-2 text-[11px] text-emerald-300/90 mb-4">
-              <Lock className="w-3.5 h-3.5" />
-              <span>{copy.selo}</span>
-            </div>
+          <div className={styles.card}>
+            <header className={styles.header}>
+              <h1 className={styles.title}>{copy.titulo}</h1>
+              <p className={styles.linha}>{copy.linha}</p>
+            </header>
 
             {erro ? (
-              <p
-                className="mb-4 text-sm text-red-200 text-center rounded-xl border border-red-400/30 bg-red-950/50 px-3 py-2"
-                role="alert"
-              >
+              <p className={styles.erro} role="alert">
                 {erro}
               </p>
             ) : null}
@@ -220,49 +113,73 @@ export function AuthGoogleScreen({ modo }: AuthGoogleScreenProps) {
               type="button"
               onClick={() => void continuarComGoogle()}
               disabled={enviando}
-              className="group w-full h-[3.25rem] rounded-2xl bg-white text-zinc-900 font-semibold text-[15px] flex items-center justify-center gap-3 hover:bg-zinc-50 disabled:opacity-70 transition-all shadow-[0_8px_30px_rgba(255,255,255,0.14)] hover:-translate-y-0.5 active:translate-y-0"
+              className={styles.cta}
             >
               {enviando ? (
-                <Loader2 className="w-5 h-5 animate-spin text-zinc-700" />
+                <Loader2 className="w-5 h-5 animate-spin text-zinc-600" />
               ) : (
-                <>
-                  <span className="flex items-center justify-center w-8 h-8 rounded-full bg-zinc-100 border border-zinc-200">
-                    <GoogleIcon />
-                  </span>
-                  <IconModo className="w-4 h-4 text-zinc-500 hidden sm:block" />
-                </>
+                <span className={styles.googleBadge}>
+                  <GoogleIcon />
+                </span>
               )}
               {enviando ? copy.botaoLoading : copy.botao}
             </button>
 
-            <div className="mt-4 flex items-start gap-2 text-[11px] text-zinc-400 leading-relaxed">
-              <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5 text-emerald-400/90" />
-              <p>
-                {modo === 'cadastro'
-                  ? 'Ao continuar, você autoriza o MEGA DOS MILIONÁRIOS a usar sua identidade Google para criar/acessar o perfil. Não pedimos senha própria.'
-                  : 'Seu histórico fica isolado por conta Google. Outros usuários não têm acesso ao seu perfil.'}
-              </p>
-            </div>
-
-            <p className="mt-5 text-center text-[12px] text-zinc-400">{copy.rodapeAcao}</p>
+            <p className={styles.alternar}>
+              {copy.alternar.pergunta}{' '}
+              <Link to={copy.alternar.to} className={styles.alternarLink}>
+                {copy.alternar.rotulo}
+              </Link>
+            </p>
           </div>
         </div>
       </main>
 
-      <footer className="relative border-t border-white/10 bg-black/50 backdrop-blur-sm px-4 py-5">
-        <div className="max-w-xl mx-auto text-center space-y-2">
-          <p className="text-[11px] text-zinc-400 leading-relaxed">
-            Este site/sistema <strong className="text-zinc-300">não garante acertividade</strong> nem
-            prêmios. Ele é baseado em cálculos de estatística e probabilidade que ajudam a decidir
-            os números a serem jogados para se ter mais chance de premiação.
-          </p>
-          <p className="text-[11px] text-zinc-500">
-            © {YEAR} MEGA DOS MILIONÁRIOS. Todos os direitos reservados. Jogue com responsabilidade
-            (+18).
-          </p>
+      <footer className={styles.footer}>
+        <div className={styles.footerInner}>
+          <p className={styles.disclaimer}>{DISCLAIMER}</p>
+          <p className={styles.copy}>© {YEAR} MEGA DOS MILIONÁRIOS · +18</p>
         </div>
       </footer>
     </div>
+  )
+}
+
+function AuthBackdrop() {
+  return (
+    <>
+      <div
+        className={styles.backdrop}
+        style={{ backgroundImage: `url(${AUTH_BG})` }}
+        role="img"
+        aria-label="MEGA DOS MILIONÁRIOS"
+      />
+      <div className={styles.vignette} />
+    </>
+  )
+}
+
+function ModoLink({
+  to,
+  ativo,
+  children,
+  delay,
+}: {
+  to: string
+  ativo: boolean
+  children: string
+  delay: string
+}) {
+  return (
+    <Link
+      to={to}
+      className={ativo ? styles.modoLinkAtivo : styles.modoLink}
+      style={{ animationDelay: delay }}
+      aria-current={ativo ? 'page' : undefined}
+    >
+      {children}
+      <span className={ativo ? styles.modoUnderlineAtivo : styles.modoUnderline} />
+    </Link>
   )
 }
 

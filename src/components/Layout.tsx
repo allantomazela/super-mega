@@ -32,7 +32,7 @@ export default function Layout() {
             <div className="flex flex-col">
               <span
                 className="text-sm sm:text-base font-extrabold text-white tracking-tight leading-tight"
-                style={{ fontFamily: "'Syne', 'Outfit', system-ui, sans-serif" }}
+                style={{ fontFamily: "'Syne', 'Manrope', system-ui, sans-serif" }}
               >
                 MEGA DOS MILIONÁRIOS
               </span>

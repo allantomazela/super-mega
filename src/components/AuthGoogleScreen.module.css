@@ -1,0 +1,296 @@
+.screen {
+  font-family: 'Manrope', system-ui, sans-serif;
+  background: #020805;
+  color: #f3efe4;
+  min-height: 100vh;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.screenLoading {
+  composes: screen;
+  align-items: center;
+  justify-content: center;
+}
+
+.backdrop {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  animation: authBgIn 1.1s ease-out both;
+}
+
+.vignette {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(2, 8, 5, 0.22) 0%,
+    rgba(2, 8, 5, 0.05) 28%,
+    rgba(2, 8, 5, 0.12) 48%,
+    rgba(2, 10, 7, 0.72) 72%,
+    rgba(1, 6, 4, 0.94) 100%
+  );
+}
+
+.brandSpace {
+  position: relative;
+  flex: 1;
+  min-height: 48vh;
+}
+
+@media (min-width: 640px) {
+  .brandSpace {
+    min-height: 52vh;
+  }
+}
+
+.main {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  padding: 0 1.25rem 1.25rem;
+}
+
+@media (min-width: 640px) {
+  .main {
+    padding: 0 1.5rem 1.75rem;
+  }
+}
+
+.panel {
+  margin-inline: auto;
+  width: 100%;
+  max-width: 26rem;
+}
+
+.nav {
+  margin-bottom: 1.25rem;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 2rem;
+}
+
+.modoLink {
+  position: relative;
+  padding-bottom: 0.5rem;
+  font-family: 'Syne', 'Manrope', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #8a8376;
+  transition: color 0.2s ease;
+  animation: authRise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.modoLink:hover {
+  color: #d4cbb8;
+}
+
+.modoLinkAtivo {
+  composes: modoLink;
+  color: #f0d78a;
+}
+
+.modoUnderline {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  height: 2px;
+  width: 0;
+  border-radius: 999px;
+  background: transparent;
+  transform: translateX(-50%);
+  transition: width 0.3s ease, background 0.3s ease;
+}
+
+.modoUnderlineAtivo {
+  composes: modoUnderline;
+  width: 100%;
+  background: #e8c56a;
+}
+
+.card {
+  border-radius: 1.5rem;
+  border: 1px solid rgba(232, 197, 106, 0.18);
+  background: linear-gradient(165deg, rgba(6, 18, 12, 0.72) 0%, rgba(3, 10, 8, 0.82) 100%);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+  padding: 1.75rem 1.5rem;
+  animation: authRise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: 0.18s;
+}
+
+@media (min-width: 640px) {
+  .card {
+    padding: 2rem;
+  }
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.title {
+  font-family: 'Syne', 'Manrope', sans-serif;
+  font-weight: 700;
+  color: #f7f1e4;
+  font-size: 1.55rem;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+@media (min-width: 640px) {
+  .title {
+    font-size: 1.75rem;
+  }
+}
+
+.linha {
+  margin-top: 0.625rem;
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  color: #c9c2b2;
+}
+
+.erro {
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+  color: #f5c4c0;
+  text-align: center;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(248, 113, 113, 0.25);
+  background: rgba(69, 10, 10, 0.4);
+  padding: 0.625rem 0.75rem;
+}
+
+.cta {
+  width: 100%;
+  height: 3.5rem;
+  border-radius: 1rem;
+  background: #fff;
+  color: #1a1a1a;
+  font-weight: 600;
+  font-size: 0.98rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.2s ease;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
+}
+
+.cta:disabled {
+  opacity: 0.7;
+}
+
+.cta:hover:not(:disabled) {
+  transform: translateY(-2px);
+  background: #fafafa;
+  box-shadow: 0 14px 36px rgba(232, 197, 106, 0.18);
+}
+
+.cta:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.googleBadge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 999px;
+  background: #f4f4f5;
+  border: 1px solid rgba(228, 228, 231, 0.8);
+}
+
+.alternar {
+  margin-top: 1.25rem;
+  text-align: center;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: #9e9686;
+}
+
+.alternarLink {
+  color: #e8c56a;
+  font-weight: 600;
+  transition: color 0.2s ease;
+}
+
+.alternarLink:hover {
+  color: #f0d78a;
+}
+
+.footer {
+  position: relative;
+  z-index: 10;
+  padding: 0.25rem 1.25rem 1.25rem;
+}
+
+.footerInner {
+  margin-inline: auto;
+  max-width: 28rem;
+  text-align: center;
+}
+
+.disclaimer {
+  font-size: 0.7rem;
+  line-height: 1.5;
+  color: #7a7468;
+}
+
+.copy {
+  margin-top: 0.375rem;
+  font-size: 0.65rem;
+  letter-spacing: 0.04em;
+  color: #5c574e;
+}
+
+.spinnerGold {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: #e8c56a;
+}
+
+@keyframes authRise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes authBgIn {
+  from {
+    opacity: 0.65;
+    transform: scale(1.04);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .backdrop,
+  .modoLink,
+  .modoLinkAtivo,
+  .card,
+  .cta {
+    animation: none !important;
+    transition: none !important;
+  }
+}
