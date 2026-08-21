@@ -123,9 +123,12 @@
 }
 
 .logo {
-  width: 4rem;
-  height: 4rem;
+  display: block;
+  width: 4.25rem;
+  height: 4.25rem;
   border-radius: 1.1rem;
+  object-fit: contain;
+  background: #0d0f12;
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4);
   animation: authFloat 4.5s ease-in-out infinite;
 }

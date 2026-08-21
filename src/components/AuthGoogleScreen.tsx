@@ -80,7 +80,14 @@ export function AuthGoogleScreen({ modo }: AuthGoogleScreenProps) {
           <div className={styles.cardGlow} aria-hidden />
 
           <div className={styles.brand}>
-            <img src={AUTH_LOGO} alt="" className={styles.logo} />
+            <img
+              src={AUTH_LOGO}
+              alt="MEGA DOS MILIONÁRIOS"
+              width={68}
+              height={68}
+              className={styles.logo}
+              decoding="async"
+            />
             <h1 id="auth-brand-title" className={styles.brandName}>
               MEGA DOS MILIONÁRIOS
             </h1>
