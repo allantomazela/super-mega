@@ -13,7 +13,6 @@ export type AuthModo = 'login' | 'cadastro'
 const COPY: Record<
   AuthModo,
   {
-    titulo: string
     linha: string
     botao: string
     botaoLoading: string
@@ -22,7 +21,6 @@ const COPY: Record<
   }
 > = {
   login: {
-    titulo: 'Bem-vindo de volta',
     linha: 'Acesse com Google para continuar nos seus jogos.',
     botao: 'Continuar com Google',
     botaoLoading: 'Conectando…',
@@ -30,7 +28,6 @@ const COPY: Record<
     alternar: { pergunta: 'Primeiro acesso?', rotulo: 'Criar conta', to: '/cadastro' },
   },
   cadastro: {
-    titulo: 'Crie sua conta',
     linha: 'Na primeira autorização, o perfil privado é criado com o Google.',
     botao: 'Cadastrar com Google',
     botaoLoading: 'Abrindo Google…',
@@ -87,7 +84,10 @@ export function AuthGoogleScreen({ modo }: AuthGoogleScreenProps) {
       <main className={styles.main}>
         <div className={styles.panel}>
           <header className={styles.headingBlock}>
-            <h1 className={styles.title}>{copy.titulo}</h1>
+            <h1 className={styles.brandTitle}>
+              <span className={styles.brandMega}>MEGA</span>
+              <span className={styles.brandRest}>DOS MILIONÁRIOS</span>
+            </h1>
             <p className={styles.linha}>{copy.linha}</p>
           </header>
 
