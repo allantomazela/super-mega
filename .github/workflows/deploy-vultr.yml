@@ -55,9 +55,29 @@ jobs:
             exit 1
           fi
           install -d -m 700 ~/.ssh
-          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H "$REMOTE_HOST" >> ~/.ssh/known_hosts
+          python3 - <<'PY'
+from pathlib import Path
+import os
+raw = os.environ["SSH_PRIVATE_KEY"].strip()
+if (raw.startswith('"') and raw.endswith('"')) or (raw.startswith("'") and raw.endswith("'")):
+    raw = raw[1:-1]
+raw = raw.replace("\r\n", "\n").replace("\r", "\n")
+if raw.count("\n") < 2 and "\\n" in raw:
+    raw = raw.replace("\\n", "\n")
+if not raw.endswith("\n"):
+    raw += "\n"
+path = Path.home() / ".ssh" / "deploy_key"
+path.write_text(raw, encoding="utf-8")
+path.chmod(0o600)
+text = path.read_text(encoding="utf-8")
+if "BEGIN" not in text or "PRIVATE KEY" not in text:
+    raise SystemExit(
+        "VULTR_SSH_KEY não é uma chave privada válida (precisa BEGIN/END PRIVATE KEY). "
+        "Cole o arquivo privado inteiro no secret, sem aspas."
+    )
+PY
+          ssh-keygen -y -f ~/.ssh/deploy_key >/dev/null
+          ssh-keyscan -H "$REMOTE_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
           ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes \
             "${REMOTE_USER}@${REMOTE_HOST}" "mkdir -p /var/www/super-mega"
           rsync -az --delete \
