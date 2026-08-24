@@ -93,6 +93,36 @@
   }
 }
 
+/* Celular deitado: pouca altura — compacta chrome e deixa o conteúdo usável */
+@media (orientation: landscape) and (max-height: 540px) {
+  .app-shell-header > div {
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
+  }
+
+  .app-shell-main {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+
+  .app-shell-footer {
+    padding-top: 0.5rem;
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+  }
+
+  .app-shell-footer p:first-of-type {
+    display: none;
+  }
+
+  .dezena-grid button {
+    min-height: 28px;
+  }
+
+  .brand-sub {
+    display: none !important;
+  }
+}
+
 @media (pointer: coarse) {
   button,
   a,

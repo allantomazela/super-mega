@@ -473,7 +473,7 @@ export default function Index() {
   }
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <div className="space-y-4 sm:space-y-8 animate-fade-in [@media(orientation:landscape)_and_(max-height:540px)]:space-y-3">
       <ModeGuide mode={mode} onChange={handleModeChange} />
       <UltimoSorteio />
 
@@ -483,9 +483,9 @@ export default function Index() {
       ) : (
         <>
           {/* Title & Instructions */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#262c34] pb-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4 border-b border-[#262c34] pb-4 sm:pb-6">
             <div>
-              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white tracking-tight">
+              <h1 className="text-lg sm:text-2xl md:text-3xl font-bold text-white tracking-tight">
                 {isCincoJogos
                   ? 'Otimizador de 5 Jogos'
                   : isFechamento
@@ -522,7 +522,7 @@ export default function Index() {
           </div>
 
           {/* Main Grid: Left = 1-60 Grid, Right = Filters / 5 Jogos panel */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-8 items-start">
             {/* Left Column: Number Grid & Counter */}
             <section className="lg:col-span-7 xl:col-span-8 space-y-6">
                 <div className="surface-card rounded-2xl p-3 sm:p-6 shadow-xl relative overflow-hidden">
@@ -530,7 +530,7 @@ export default function Index() {
                 <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent" />
 
                 {/* Grid 01-60 */}
-                <div className="grid grid-cols-6 sm:grid-cols-8 lg:grid-cols-12 gap-2 sm:gap-2.5">
+                <div className="dezena-grid grid grid-cols-6 min-[380px]:grid-cols-8 lg:grid-cols-12 landscape:grid-cols-12 gap-1.5 sm:gap-2.5">
                   {Array.from({ length: 60 }, (_, i) => i + 1).map((num) => {
                     const isSelected = selectedNumbers.includes(num)
                     const isMaxReached = !isSelected && count >= maxSelection
@@ -549,7 +549,7 @@ export default function Index() {
                               : `Selecionar dezena ${formatTwoDigits(num)}`
                         }
                         className={`
-                      relative aspect-square w-full min-h-[44px] sm:min-h-[48px] rounded-xl font-bold text-sm sm:text-base flex items-center justify-center transition-all duration-150 select-none
+                      relative aspect-square w-full min-h-[36px] sm:min-h-[48px] rounded-xl font-bold text-sm sm:text-base flex items-center justify-center transition-all duration-150 select-none
                       ${
                         isSelected
                           ? 'emerald-gradient text-white emerald-glow scale-[1.05] z-10 border border-emerald-300/40 ring-1 ring-emerald-400/50 font-extrabold'

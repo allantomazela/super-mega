@@ -50,8 +50,8 @@ export function UltimoSorteio() {
 
   return (
     <section className="space-y-3">
-      <div className="rounded-2xl border border-emerald-500/25 bg-[#12161b] px-4 py-3 sm:px-5">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-5">
+      <div className="rounded-2xl border border-emerald-500/25 bg-[#12161b] px-3 py-2.5 sm:px-5 sm:py-3">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-5">
           <div className="flex items-center gap-2 text-emerald-400 shrink-0">
             <Trophy className="w-4 h-4" />
             <div>

@@ -516,7 +516,7 @@ const GrupoPanel: React.FC<{
       </div>
 
       {/* Grid 01-60 */}
-      <div className="grid grid-cols-6 sm:grid-cols-10 gap-1.5">
+      <div className="dezena-grid grid grid-cols-6 sm:grid-cols-10 landscape:grid-cols-12 gap-1.5">
         {Array.from({ length: 60 }, (_, i) => i + 1).map((num) => {
           const isSelected = selected.includes(num)
           const isMaxReached = !isSelected && count >= MAX_SELECTION

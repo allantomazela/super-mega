@@ -54,7 +54,7 @@ export function ModeGuide({ mode, onChange }: ModeGuideProps) {
 
   return (
     <div className="space-y-3">
-      <div className="surface-card rounded-2xl p-2 shadow-lg grid grid-cols-1 min-[480px]:grid-cols-2 xl:grid-cols-4 gap-2">
+      <div className="surface-card rounded-2xl p-2 shadow-lg grid grid-cols-1 min-[480px]:grid-cols-2 xl:grid-cols-4 landscape:grid-cols-4 gap-2">
         {MODES.map((opt) => {
           const selected = mode === opt.key
           const OptIcon = opt.icon
@@ -63,7 +63,7 @@ export function ModeGuide({ mode, onChange }: ModeGuideProps) {
               key={opt.key}
               type="button"
               onClick={() => onChange(opt.key)}
-              className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all duration-200 text-left min-h-[3.25rem] ${
+              className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all duration-200 text-left min-h-[3.25rem] landscape:min-h-[2.75rem] ${
                 selected
                   ? 'emerald-gradient emerald-glow text-white border border-emerald-300/40'
                   : 'bg-[#1a1f2b] border border-[#262c34] text-zinc-300 hover:text-white hover:border-zinc-600'
