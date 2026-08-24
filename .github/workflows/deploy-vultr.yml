@@ -1,0 +1,55 @@
+name: Publicar no Vultr
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: vultr-super-mega
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Build e enviar
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Sincronizar e exportar concursos do Neon
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          REQUIRED_SECRET: DATABASE_URL
+          SKIP_IF_NO_URL: '1'
+        run: |
+          node scripts/sync-concursos-neon.mjs
+          node scripts/export-concursos-json.mjs
+      - name: Build (domínio na raiz)
+        env:
+          VITE_BASE_PATH: /
+          VITE_NEON_AUTH_URL: https://ep-small-paper-acm07pmb.neonauth.sa-east-1.aws.neon.tech/neondb/auth
+        run: pnpm build
+      - name: Fallback SPA nas rotas
+        run: |
+          cp dist/index.html dist/404.html
+          for route in login cadastro perfil resultados; do
+            mkdir -p "dist/${route}"
+            cp dist/index.html "dist/${route}/index.html"
+          done
+      - name: Publicar em /var/www/super-mega
+        uses: easingthemes/ssh-deploy@v5.0.2
+        with:
+          SSH_PRIVATE_KEY: ${{ secrets.VULTR_SSH_KEY }}
+          REMOTE_HOST: ${{ secrets.VULTR_HOST }}
+          REMOTE_USER: ${{ secrets.VULTR_USER }}
+          SOURCE: dist/
+          TARGET: /var/www/super-mega/
+          ARGS: -az --delete
+          EXCLUDE: /node_modules/, /.git/
