@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import { useAuth } from '@/lib/AuthContext'
+import { InstalarPwa } from '@/components/InstalarPwa'
 import styles from './AuthGoogleScreen.module.css'
 import logoMega from '@/assets/logo-mega.svg'
 
@@ -134,6 +135,9 @@ export function AuthGoogleScreen({ modo }: AuthGoogleScreenProps) {
             )}
             {enviando ? copy.botaoLoading : copy.botao}
           </button>
+          <div className="mt-3 flex justify-center">
+            <InstalarPwa variante="texto" />
+          </div>
         </section>
       </main>
 

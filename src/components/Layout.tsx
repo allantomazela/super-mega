@@ -3,6 +3,7 @@ import { Award, LogOut, User } from 'lucide-react'
 import { useMega, MODE_LABELS } from '@/lib/MegaContext'
 import { useAuth } from '@/lib/AuthContext'
 import { AlertaPremiosHistorico } from '@/components/AlertaPremiosHistorico'
+import { InstalarPwa } from '@/components/InstalarPwa'
 import logoMega from '@/assets/logo-mega.svg'
 
 export default function Layout() {
@@ -57,6 +58,7 @@ export default function Layout() {
             ) : null}
 
             <div className="flex items-center gap-1.5 sm:gap-2">
+              <InstalarPwa variante="icone" />
               <div className="hidden md:flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#161a1f] border border-[#262c34] text-zinc-300 text-xs font-medium">
                 <span className="font-semibold text-emerald-400">{modeLabel}</span>
               </div>
