@@ -54,7 +54,7 @@ export function ModeGuide({ mode, onChange }: ModeGuideProps) {
 
   return (
     <div className="space-y-3">
-      <div className="surface-card rounded-2xl p-2 shadow-lg grid grid-cols-2 xl:grid-cols-4 gap-2">
+      <div className="surface-card rounded-2xl p-2 shadow-lg grid grid-cols-1 min-[480px]:grid-cols-2 xl:grid-cols-4 gap-2">
         {MODES.map((opt) => {
           const selected = mode === opt.key
           const OptIcon = opt.icon

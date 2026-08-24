@@ -87,7 +87,7 @@ export default function Perfil() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-3 gap-2 mt-5">
+        <div className="grid grid-cols-3 gap-1.5 sm:gap-2 mt-5">
           <MiniStat label="Confirmados" value={String(confirmados.length)} />
           <MiniStat label="Conferências" value={String(conferencias.length)} />
           <MiniStat
@@ -98,7 +98,7 @@ export default function Perfil() {
         </div>
       </section>
 
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <TabButton
           ativa={aba === 'confirmados'}
           onClick={() => setAba('confirmados')}
@@ -235,7 +235,7 @@ function TabButton({
     <button
       type="button"
       onClick={onClick}
-      className={`flex-1 h-10 rounded-xl border text-xs font-semibold inline-flex items-center justify-center gap-1.5 transition-colors ${
+      className={`flex-1 min-w-[9.5rem] min-h-10 px-2 rounded-xl border text-[11px] sm:text-xs font-semibold inline-flex items-center justify-center gap-1.5 transition-colors ${
         ativa
           ? 'border-emerald-500/40 bg-emerald-950/40 text-emerald-300'
           : 'border-[#262c34] bg-[#161a1f] text-zinc-400 hover:text-white'

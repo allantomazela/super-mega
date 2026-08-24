@@ -15,35 +15,35 @@ export default function Layout() {
   const { user, signOut } = useAuth()
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#0d0f12] text-foreground">
+    <div className="flex flex-col min-h-screen min-h-[100dvh] bg-[#0d0f12] text-foreground">
       <AlertaPremiosHistorico />
 
-      <header className="sticky top-0 z-40 w-full border-b border-[#262c34] bg-[#0d0f12]/85 backdrop-blur-md">
-        <div className="max-w-[1200px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+      <header className="sticky top-0 z-40 w-full border-b border-[#262c34] bg-[#0d0f12]/85 backdrop-blur-md pt-[env(safe-area-inset-top)]">
+        <div className="max-w-[1200px] mx-auto px-3 sm:px-6 min-h-14 sm:min-h-16 py-2 flex items-center justify-between gap-2">
           <Link
             to="/"
-            className="flex items-center gap-3 group transition-opacity hover:opacity-90"
+            className="flex items-center gap-2 sm:gap-3 group transition-opacity hover:opacity-90 min-w-0"
             title="Voltar ao início"
           >
             <img
               src={logoMega}
               alt="MEGA DOS MILIONÁRIOS"
-              className="w-10 h-10 rounded-xl border border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.3)]"
+              className="w-8 h-8 sm:w-10 sm:h-10 shrink-0 rounded-xl border border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.3)]"
             />
-            <div className="flex flex-col">
+            <div className="flex flex-col min-w-0">
               <span
-                className="text-sm sm:text-base font-extrabold text-white tracking-tight leading-tight"
+                className="text-[11px] sm:text-sm md:text-base font-extrabold text-white tracking-tight leading-tight truncate"
                 style={{ fontFamily: "'Syne', 'Manrope', system-ui, sans-serif" }}
               >
                 MEGA DOS MILIONÁRIOS
               </span>
-              <span className="text-xs text-emerald-400 font-medium tracking-wide">
+              <span className="hidden min-[400px]:block text-[10px] sm:text-xs text-emerald-400 font-medium tracking-wide">
                 Otimizador Mega-Sena
               </span>
             </div>
           </Link>
 
-          <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex items-center gap-1.5 sm:gap-4 shrink-0">
             {!isPerfil ? (
               <div className="hidden sm:flex items-center gap-2 text-xs font-medium px-3 py-1 rounded-full bg-[#161a1f] border border-[#262c34]">
                 <span className={!isResultsPage ? 'text-emerald-400 font-semibold' : 'text-zinc-500'}>
@@ -62,7 +62,7 @@ export default function Layout() {
               </div>
               <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950/60 border border-emerald-500/30 text-emerald-300 text-xs font-medium shadow-sm">
                 <Award className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="font-semibold hidden xs:inline">Mega-Sena</span>
+                <span className="font-semibold hidden sm:inline">Mega-Sena</span>
               </div>
               {user ? (
                 <div className="flex items-center gap-2 pl-1">
@@ -98,11 +98,11 @@ export default function Layout() {
         </div>
       </header>
 
-      <main className="flex-1 max-w-[1200px] w-full mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <main className="flex-1 max-w-[1200px] w-full mx-auto px-3 sm:px-6 py-4 sm:py-8">
         <Outlet />
       </main>
 
-      <footer className="border-t border-[#262c34] bg-[#0d0f12]/60 py-6">
+      <footer className="border-t border-[#262c34] bg-[#0d0f12]/60 py-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
         <div className="max-w-[1200px] mx-auto px-4 sm:px-6 text-center space-y-2">
           <p className="text-[11px] text-zinc-500 leading-relaxed max-w-3xl mx-auto">
             Este site/sistema <strong className="text-zinc-400">não garante acertividade</strong> nem

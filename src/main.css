@@ -51,6 +51,11 @@
     @apply border-border;
   }
 
+  html {
+    overflow-x: hidden;
+    -webkit-text-size-adjust: 100%;
+  }
+
   body {
     @apply bg-[#0d0f12] text-foreground antialiased selection:bg-emerald-500/30 selection:text-emerald-200;
     font-family:
@@ -65,6 +70,9 @@
       Cantarell,
       sans-serif;
     min-height: 100vh;
+    min-height: 100dvh;
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
     background-image: radial-gradient(
       circle at 50% 0%,
       rgba(16, 185, 129, 0.08) 0%,
@@ -77,6 +85,19 @@
   section[aria-label='Notifications alt+T'] {
     padding: 0 !important;
     margin: 0 !important;
+  }
+
+  #root {
+    min-height: 100dvh;
+    overflow-x: hidden;
+  }
+}
+
+@media (pointer: coarse) {
+  button,
+  a,
+  [role='button'] {
+    touch-action: manipulation;
   }
 }
 

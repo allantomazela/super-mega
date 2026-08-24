@@ -61,7 +61,7 @@ export function ValidacaoHistorica({ jogos }: ValidacaoHistoricaProps) {
 
   return (
     <div className="surface-card rounded-2xl p-5 sm:p-6 border border-cyan-500/25 shadow-lg space-y-4">
-      <div className="flex items-start justify-between gap-3 border-b border-[#262c34] pb-3">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 border-b border-[#262c34] pb-3">
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="w-8 h-8 rounded-lg bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shrink-0">
             <ShieldCheck className="w-4 h-4" />

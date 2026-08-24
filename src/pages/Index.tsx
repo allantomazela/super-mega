@@ -485,7 +485,7 @@ export default function Index() {
           {/* Title & Instructions */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#262c34] pb-6">
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white tracking-tight">
                 {isCincoJogos
                   ? 'Otimizador de 5 Jogos'
                   : isFechamento
@@ -502,7 +502,7 @@ export default function Index() {
             </div>
 
             {/* Quick actions: Surpresinha (6–20, padrão Caixa) + Resetar Tudo */}
-            <div className="flex items-start gap-2">
+            <div className="flex flex-wrap items-start gap-2 shrink-0">
               <SeletorAleatorias
                 quantidade={qtdAleatorias}
                 onQuantidadeChange={setQtdAleatorias}
@@ -525,7 +525,7 @@ export default function Index() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             {/* Left Column: Number Grid & Counter */}
             <section className="lg:col-span-7 xl:col-span-8 space-y-6">
-              <div className="surface-card rounded-2xl p-5 sm:p-6 shadow-xl relative overflow-hidden">
+                <div className="surface-card rounded-2xl p-3 sm:p-6 shadow-xl relative overflow-hidden">
                 {/* Ambient emerald gradient top */}
                 <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent" />
 

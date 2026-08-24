@@ -180,7 +180,7 @@ export const SimulacaoHistorica: React.FC<SimulacaoHistoricaProps> = ({
                     (união das dezenas dos {jogos.length} jogos)
                   </span>
                 </div>
-                <div className="grid grid-cols-4 gap-2 text-center">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
                   <MiniStat label="Taxa" value={`${top10[0]?.taxaAcerto ?? 0}%`} highlight />
                   <MiniStat label="Quadras" value={String(top10[0]?.quadras ?? 0)} />
                   <MiniStat label="Quinas" value={String(top10[0]?.quinas ?? 0)} />

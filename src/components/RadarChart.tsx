@@ -250,7 +250,7 @@ export const GameScoreRadar: React.FC<GameScoreRadarProps> = ({ game, variant = 
           <div className="w-full max-w-[220px] mx-auto aspect-square">
             <RadarChart breakdown={breakdown} size={220} showLabels showValues />
           </div>
-          <div className="mt-2 grid grid-cols-5 gap-1 text-center">
+          <div className="mt-2 grid grid-cols-3 sm:grid-cols-5 gap-1 text-center">
             {CRITERIOS.map((c) => (
               <div key={c.key} className="px-0.5">
                 <div className="text-[8px] uppercase tracking-wider text-zinc-500 font-semibold truncate">
