@@ -44,12 +44,19 @@ jobs:
             cp dist/index.html "dist/${route}/index.html"
           done
       - name: Publicar em /var/www/super-mega
-        uses: easingthemes/ssh-deploy@v5.0.2
-        with:
+        env:
           SSH_PRIVATE_KEY: ${{ secrets.VULTR_SSH_KEY }}
           REMOTE_HOST: ${{ secrets.VULTR_HOST }}
           REMOTE_USER: ${{ secrets.VULTR_USER }}
-          SOURCE: dist/
-          TARGET: /var/www/super-mega/
-          ARGS: -az --delete
-          EXCLUDE: /node_modules/, /.git/
+        run: |
+          set -euo pipefail
+          if [ -z "$SSH_PRIVATE_KEY" ] || [ -z "$REMOTE_HOST" ] || [ -z "$REMOTE_USER" ]; then
+            echo "Faltam secrets: VULTR_SSH_KEY, VULTR_HOST e/ou VULTR_USER (Repository secrets, não Environment)."
+            exit 1
+          fi
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "$REMOTE_HOST" >> ~/.ssh/known_hosts
+          rsync -az --delete -e "ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes" \
+            dist/ "${REMOTE_USER}@${REMOTE_HOST}:/var/www/super-mega/"
