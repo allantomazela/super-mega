@@ -13,6 +13,9 @@ import { RequireAuth } from './components/RequireAuth'
 import { PostAuthRedirect } from './components/PostAuthRedirect'
 import { MegaProvider } from './lib/MegaContext'
 import { AuthProvider } from './lib/AuthContext'
+import { LotofacilProvider } from '@/modules/lotofacil/hooks/LotofacilContext'
+import LotofacilIndex from '@/modules/lotofacil/pages/LotofacilIndex'
+import LotofacilResultados from '@/modules/lotofacil/pages/LotofacilResultados'
 
 const basename = import.meta.env.BASE_URL.replace(/\/$/, '')
 
@@ -21,20 +24,24 @@ const App = () => (
     <TooltipProvider>
       <AuthProvider>
         <MegaProvider>
-          <Toaster />
-          <Sonner />
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/cadastro" element={<Cadastro />} />
-            <Route element={<RequireAuth />}>
-              <Route element={<Layout />}>
-                <Route path="/" element={<Index />} />
-                <Route path="/resultados" element={<Resultados />} />
-                <Route path="/perfil" element={<Perfil />} />
+          <LotofacilProvider>
+            <Toaster />
+            <Sonner />
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/cadastro" element={<Cadastro />} />
+              <Route element={<RequireAuth />}>
+                <Route element={<Layout />}>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/resultados" element={<Resultados />} />
+                  <Route path="/perfil" element={<Perfil />} />
+                  <Route path="/lotofacil" element={<LotofacilIndex />} />
+                  <Route path="/lotofacil/resultados" element={<LotofacilResultados />} />
+                </Route>
               </Route>
-            </Route>
-            <Route path="*" element={<PostAuthRedirect />} />
-          </Routes>
+              <Route path="*" element={<PostAuthRedirect />} />
+            </Routes>
+          </LotofacilProvider>
         </MegaProvider>
       </AuthProvider>
     </TooltipProvider>

@@ -40,6 +40,8 @@ jobs:
         run: |
           node scripts/sync-concursos-neon.mjs
           node scripts/export-concursos-json.mjs
+          node scripts/sync-lotofacil-neon.mjs
+          node scripts/export-lotofacil-json.mjs
       - name: Build
         env:
           VITE_NEON_AUTH_URL: https://ep-small-paper-acm07pmb.neonauth.sa-east-1.aws.neon.tech/neondb/auth
@@ -49,7 +51,7 @@ jobs:
           cp dist/index.html dist/404.html
           # GitHub Pages devolve HTTP 404 para paths sem arquivo; espelhar rotas
           # evita o erro "login:1 Failed to load resource 404" no console.
-          for route in login cadastro perfil resultados; do
+          for route in login cadastro perfil resultados lotofacil lotofacil/resultados; do
             mkdir -p "dist/${route}"
             cp dist/index.html "dist/${route}/index.html"
           done

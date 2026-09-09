@@ -25,7 +25,9 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           REQUIRED_SECRET: DATABASE_URL
           SKIP_IF_NO_URL: '1'
-        run: node scripts/sync-concursos-neon.mjs
+        run: |
+          node scripts/sync-concursos-neon.mjs
+          node scripts/sync-lotofacil-neon.mjs
 
   sync-dev:
     name: Neon dev
@@ -45,4 +47,6 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL_DEV }}
           REQUIRED_SECRET: DATABASE_URL_DEV
           SKIP_IF_NO_URL: '1'
-        run: node scripts/sync-concursos-neon.mjs
+        run: |
+          node scripts/sync-concursos-neon.mjs
+          node scripts/sync-lotofacil-neon.mjs

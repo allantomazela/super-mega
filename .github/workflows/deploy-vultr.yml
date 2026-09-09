@@ -31,6 +31,8 @@ jobs:
         run: |
           node scripts/sync-concursos-neon.mjs
           node scripts/export-concursos-json.mjs
+          node scripts/sync-lotofacil-neon.mjs
+          node scripts/export-lotofacil-json.mjs
       - name: Build (domínio na raiz)
         env:
           VITE_BASE_PATH: /
@@ -39,7 +41,7 @@ jobs:
       - name: Fallback SPA nas rotas
         run: |
           cp dist/index.html dist/404.html
-          for route in login cadastro perfil resultados; do
+          for route in login cadastro perfil resultados lotofacil lotofacil/resultados; do
             mkdir -p "dist/${route}"
             cp dist/index.html "dist/${route}/index.html"
           done
