@@ -51,7 +51,7 @@ export async function buscarSnapshotLotofacil(): Promise<ConcursoLotofacil[] | n
   }
 }
 
-async function buscarAoVivo(quantidade = 40): Promise<ConcursoLotofacil[] | null> {
+async function buscarAoVivo(quantidade = 200): Promise<ConcursoLotofacil[] | null> {
   try {
     const latest = await buscarUltimoResultadoLotofacil()
     if (!latest) return null
@@ -96,7 +96,7 @@ export async function carregarHistoricoLotofacil(): Promise<ResultadoCargaLotofa
     return { concursos: lista, origem: oficial ? 'api' : 'neon' }
   }
 
-  const vivo = await buscarAoVivo(40)
+  const vivo = await buscarAoVivo(200)
   if (vivo) {
     return { concursos: vivo, origem: 'api' }
   }

@@ -1,17 +1,20 @@
-# Copie para /etc/nginx/sites-available/megadosmilionarios
-# sudo ln -s /etc/nginx/sites-available/megadosmilionarios /etc/nginx/sites-enabled/
-# sudo nginx -t && sudo systemctl reload nginx
-# Depois: sudo certbot --nginx -d megadosmilionarios.com.br -d www.megadosmilionarios.com.br
-
 server {
-    listen 80;
-    listen [::]:80;
     server_name megadosmilionarios.com.br www.megadosmilionarios.com.br;
 
     root /var/www/super-mega;
     index index.html;
 
-    # Rotas do React (login, cadastro, perfil, resultados)
+    location = /index.html {
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+        add_header Pragma "no-cache";
+    }
+
+    location ~* \.html$ {
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+        add_header Pragma "no-cache";
+        try_files $uri /index.html;
+    }
+
     location / {
         try_files $uri $uri/ /index.html;
     }
@@ -19,11 +22,20 @@ server {
     location = /sw.js {
         add_header Cache-Control "no-cache";
         add_header Service-Worker-Allowed "/";
+        default_type application/javascript;
     }
 
     location = /manifest.webmanifest {
         default_type application/manifest+json;
         add_header Cache-Control "no-cache";
+        add_header Access-Control-Allow-Origin "*";
+    }
+
+    location /assets/ {
+        expires 7d;
+        add_header Cache-Control "public, immutable";
+        access_log off;
+        try_files $uri =404;
     }
 
     location ~* \.(js|css|png|jpg|jpeg|svg|webp|woff2)$ {
@@ -31,4 +43,26 @@ server {
         add_header Cache-Control "public";
         access_log off;
     }
+
+    listen [::]:443 ssl; # managed by Certbot
+    listen 443 ssl; # managed by Certbot
+    ssl_certificate /etc/letsencrypt/live/megadosmilionarios.com.br/fullchain.pem; # managed by Certbot
+    ssl_certificate_key /etc/letsencrypt/live/megadosmilionarios.com.br/privkey.pem; # managed by Certbot
+    include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
+}
+
+server {
+    if ($host = www.megadosmilionarios.com.br) {
+        return 301 https://$host$request_uri;
+    } # managed by Certbot
+
+    if ($host = megadosmilionarios.com.br) {
+        return 301 https://$host$request_uri;
+    } # managed by Certbot
+
+    listen 80;
+    listen [::]:80;
+    server_name megadosmilionarios.com.br www.megadosmilionarios.com.br;
+    return 404; # managed by Certbot
 }

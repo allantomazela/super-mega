@@ -1,6 +1,5 @@
 import { Outlet, useLocation, Link } from 'react-router-dom'
 import { LogOut, User } from 'lucide-react'
-import { useMega, MODE_LABELS } from '@/lib/MegaContext'
 import { useAuth } from '@/lib/AuthContext'
 import { AlertaPremiosHistorico } from '@/components/AlertaPremiosHistorico'
 import { InstalarPwa } from '@/components/InstalarPwa'
@@ -10,12 +9,8 @@ import logoMega from '@/assets/logo-mega.svg'
 export default function Layout() {
   const location = useLocation()
   const isLotofacil = location.pathname.startsWith('/lotofacil')
-  const isResultsPage =
-    location.pathname === '/resultados' || location.pathname.startsWith('/lotofacil/resultados')
   const isPerfil = location.pathname.startsWith('/perfil')
   const currentYear = new Date().getFullYear()
-  const { mode } = useMega()
-  const modeLabel = MODE_LABELS[mode]
   const { user, signOut } = useAuth()
   const homeTo = isLotofacil ? '/lotofacil' : '/'
 
@@ -23,89 +18,61 @@ export default function Layout() {
     <div className="flex flex-col min-h-screen min-h-[100dvh] bg-[#0d0f12] text-foreground">
       {!isLotofacil ? <AlertaPremiosHistorico /> : null}
 
-      <header className="app-shell-header sticky top-0 z-40 w-full border-b border-[#262c34] bg-[#0d0f12]/85 backdrop-blur-md pt-[env(safe-area-inset-top)]">
-        <div className="max-w-[1200px] mx-auto px-3 sm:px-6 py-1.5 sm:py-2 flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
-          <Link
-            to={homeTo}
-            className="flex items-center gap-2 sm:gap-3 group transition-opacity hover:opacity-90 min-w-0 flex-1 basis-[11.5rem]"
-            title="Voltar ao início"
-          >
-            <img
-              src={logoMega}
-              alt="MEGA DOS MILIONÁRIOS"
-              className="w-8 h-8 sm:w-10 sm:h-10 shrink-0 rounded-xl border border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.3)]"
-            />
-            <div className="flex flex-col min-w-0">
-              <span
-                className="text-[12px] sm:text-sm md:text-base font-extrabold text-white tracking-tight leading-[1.15]"
-                style={{ fontFamily: "'Syne', 'Manrope', system-ui, sans-serif" }}
-              >
-                <span className="sm:hidden">
-                  MEGA DOS
-                  <br />
-                  MILIONÁRIOS
-                </span>
-                <span className="hidden sm:inline whitespace-nowrap">MEGA DOS MILIONÁRIOS</span>
-              </span>
-              <span
-                className={`brand-sub hidden sm:block text-[10px] sm:text-xs font-medium tracking-wide ${
-                  isLotofacil ? 'text-violet-400' : 'text-emerald-400'
+      <header className="app-shell-header sticky top-0 z-40 w-full border-b border-[#262c34] bg-[#0d0f12]/90 backdrop-blur-md pt-[env(safe-area-inset-top)]">
+        <div className="max-w-[1200px] mx-auto px-3 sm:px-6 py-2 sm:py-2.5 space-y-2">
+          {/* Linha 1: marca + ações */}
+          <div className="flex items-center justify-between gap-2">
+            <Link
+              to={homeTo}
+              className="flex items-center gap-2 sm:gap-3 min-w-0 group hover:opacity-90"
+              title="Voltar ao início"
+            >
+              <img
+                src={logoMega}
+                alt="MEGA DOS MILIONÁRIOS"
+                className={`w-9 h-9 sm:w-10 sm:h-10 shrink-0 rounded-xl border shadow-[0_0_12px_rgba(16,185,129,0.28)] ${
+                  isLotofacil ? 'border-violet-500/45' : 'border-emerald-500/40'
                 }`}
-              >
-                {isLotofacil ? 'Otimizador Lotofácil' : 'Otimizador Mega-Sena'}
-              </span>
-            </div>
-          </Link>
-
-          <div className="flex items-center gap-1.5 sm:gap-4 shrink-0 ml-auto">
-            {!isPerfil ? (
-              <div className="hidden sm:flex items-center gap-2 text-xs font-medium px-3 py-1 rounded-full bg-[#161a1f] border border-[#262c34]">
+              />
+              <div className="flex flex-col min-w-0">
                 <span
-                  className={
-                    !isResultsPage
-                      ? isLotofacil
-                        ? 'text-violet-400 font-semibold'
-                        : 'text-emerald-400 font-semibold'
-                      : 'text-zinc-500'
-                  }
+                  className="text-[12px] sm:text-sm md:text-base font-extrabold text-white tracking-tight leading-[1.15]"
+                  style={{ fontFamily: "'Syne', 'Manrope', system-ui, sans-serif" }}
                 >
-                  Passo 1: Seleção
+                  <span className="sm:hidden">
+                    MEGA DOS
+                    <br />
+                    MILIONÁRIOS
+                  </span>
+                  <span className="hidden sm:inline whitespace-nowrap">MEGA DOS MILIONÁRIOS</span>
                 </span>
-                <span className="text-zinc-600">/</span>
                 <span
-                  className={
-                    isResultsPage
-                      ? isLotofacil
-                        ? 'text-violet-400 font-semibold'
-                        : 'text-emerald-400 font-semibold'
-                      : 'text-zinc-500'
-                  }
+                  className={`brand-sub text-[10px] sm:text-xs font-medium tracking-wide ${
+                    isLotofacil ? 'text-violet-400' : 'text-emerald-400'
+                  }`}
                 >
-                  Passo 2: Resultados
+                  {isLotofacil ? 'Lotofácil' : 'Mega-Sena'}
+                  {!isPerfil ? (
+                    <span className="text-zinc-500 font-normal"> · otimizador</span>
+                  ) : null}
                 </span>
               </div>
-            ) : null}
+            </Link>
 
-            <div className="flex items-center gap-1.5 sm:gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               <InstalarPwa variante="icone" />
-              {!isLotofacil ? (
-                <div className="hidden md:flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#161a1f] border border-[#262c34] text-zinc-300 text-xs font-medium">
-                  <span className="font-semibold text-emerald-400">{modeLabel}</span>
-                </div>
-              ) : null}
-              <LoteriaToggle />
               {user ? (
-                <div className="flex items-center gap-2 pl-1">
+                <>
                   <Link
                     to="/perfil"
-                    className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-[#161a1f] border border-[#262c34] text-zinc-300 text-xs font-medium hover:text-white hover:border-emerald-500/40"
+                    className="inline-flex items-center gap-1.5 h-9 px-2 sm:px-2.5 rounded-full bg-[#161a1f] border border-[#262c34] text-zinc-300 text-xs font-medium hover:text-white hover:border-emerald-500/40"
                     title="Meu perfil e histórico"
                   >
                     {user.image ? (
                       <img
                         src={user.image}
                         alt=""
-                        className="w-7 h-7 rounded-full border border-[#262c34]"
+                        className="w-6 h-6 rounded-full border border-[#262c34]"
                       />
                     ) : (
                       <User className="w-3.5 h-3.5" />
@@ -115,16 +82,23 @@ export default function Layout() {
                   <button
                     type="button"
                     onClick={() => void signOut()}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#161a1f] border border-[#262c34] text-zinc-300 text-xs font-medium hover:text-white hover:border-zinc-500"
+                    className="inline-flex items-center gap-1.5 h-9 px-2.5 rounded-full bg-[#161a1f] border border-[#262c34] text-zinc-300 text-xs font-medium hover:text-white hover:border-zinc-500"
                     title="Sair"
                   >
                     <LogOut className="w-3.5 h-3.5" />
                     <span className="hidden sm:inline">Sair</span>
                   </button>
-                </div>
+                </>
               ) : null}
             </div>
           </div>
+
+          {/* Linha 2: plataformas em destaque */}
+          {!isPerfil ? (
+            <div className="flex justify-stretch sm:justify-center">
+              <LoteriaToggle />
+            </div>
+          ) : null}
         </div>
       </header>
 

@@ -21,6 +21,7 @@ interface LotofacilContextValue {
   toggleNumber: (n: number) => void
   clearSelection: () => void
   randomSelect: (qtd: number) => void
+  applySelection: (nums: number[]) => void
   filtros: FiltrosLotofacil
   setFiltros: (f: FiltrosLotofacil | ((prev: FiltrosLotofacil) => FiltrosLotofacil)) => void
   mode: LotofacilMode
@@ -121,12 +122,25 @@ export function LotofacilProvider({ children }: { children: ReactNode }) {
     [persist],
   )
 
+  const applySelection = useCallback(
+    (nums: number[]) => {
+      const next = [...new Set(nums)]
+        .filter((n) => n >= 1 && n <= LF_UNIVERSO)
+        .sort((a, b) => a - b)
+        .slice(0, LF_MAX_POOL)
+      setSelected(next)
+      persist({ selected: next })
+    },
+    [persist],
+  )
+
   const value = useMemo<LotofacilContextValue>(
     () => ({
       selected,
       toggleNumber,
       clearSelection,
       randomSelect,
+      applySelection,
       filtros,
       setFiltros: (f) => {
         setFiltros((prev) => {
@@ -153,6 +167,7 @@ export function LotofacilProvider({ children }: { children: ReactNode }) {
       toggleNumber,
       clearSelection,
       randomSelect,
+      applySelection,
       filtros,
       mode,
       targetHits,

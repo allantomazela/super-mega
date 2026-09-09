@@ -6,6 +6,8 @@ import { useLotofacilConcursos } from '@/modules/lotofacil/hooks/useLotofacilCon
 import { NumeroGrid } from '@/modules/lotofacil/components/NumeroGrid'
 import { FiltrosPainel } from '@/modules/lotofacil/components/FiltrosPainel'
 import { UltimoSorteioLotofacil } from '@/modules/lotofacil/components/UltimoSorteioLotofacil'
+import { AnaliseHistoricaPainel } from '@/modules/lotofacil/components/AnaliseHistoricaPainel'
+import { PrevisaoPainel } from '@/modules/lotofacil/components/PrevisaoPainel'
 import { getCombinations, shuffleInPlace } from '@/modules/lotofacil/utils/math/combinacoes'
 import { avaliarFiltros, scoreFiltros } from '@/modules/lotofacil/utils/math/filtros'
 import { generateCoveringDesign } from '@/modules/lotofacil/utils/math/fechamentos'
@@ -31,6 +33,7 @@ export default function LotofacilIndex() {
     toggleNumber,
     clearSelection,
     randomSelect,
+    applySelection,
     filtros,
     setFiltros,
     mode,
@@ -281,6 +284,17 @@ export default function LotofacilIndex() {
           </Link>
         </aside>
       </div>
+
+      <PrevisaoPainel
+        concursos={concursos}
+        filtros={filtros}
+        onAplicar={(dezenas) => applySelection(dezenas)}
+      />
+      <AnaliseHistoricaPainel
+        concursos={concursos}
+        selected={selected}
+        onToggleDezena={toggleNumber}
+      />
     </div>
   )
 }

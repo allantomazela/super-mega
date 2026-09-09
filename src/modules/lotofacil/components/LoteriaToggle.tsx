@@ -1,42 +1,40 @@
 import { Link, useLocation } from 'react-router-dom'
 import { Award, Grid3x3 } from 'lucide-react'
 
-/** Alternância Mega-Sena ↔ Lotofácil no header (único ponto compartilhado de navegação). */
+/** Seletor visual Mega-Sena ↔ Lotofácil — destaque no header. */
 export function LoteriaToggle() {
   const { pathname } = useLocation()
   const isLotofacil = pathname.startsWith('/lotofacil')
 
   return (
     <div
-      className="flex items-center rounded-full border border-[#262c34] bg-[#161a1f] p-0.5 text-[11px] sm:text-xs font-semibold"
+      className="w-full sm:w-auto grid grid-cols-2 gap-1 p-1 rounded-2xl border border-[#2a3140] bg-[#0f1318] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
       role="group"
       aria-label="Escolher loteria"
     >
       <Link
         to="/"
-        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full transition-colors ${
+        aria-current={!isLotofacil ? 'page' : undefined}
+        className={`relative inline-flex items-center justify-center gap-2 min-h-11 px-3 sm:px-5 rounded-xl text-sm font-extrabold tracking-tight transition-all ${
           !isLotofacil
-            ? 'bg-emerald-950/80 border border-emerald-500/40 text-emerald-300'
-            : 'text-zinc-400 hover:text-white'
+            ? 'bg-gradient-to-br from-emerald-500 to-emerald-700 text-white shadow-[0_0_18px_rgba(16,185,129,0.45)] border border-emerald-300/40'
+            : 'text-zinc-400 hover:text-white hover:bg-[#1a1f2b]'
         }`}
-        title="Mega-Sena"
       >
-        <Award className="w-3.5 h-3.5" />
-        <span className="hidden min-[420px]:inline">Mega-Sena</span>
-        <span className="min-[420px]:hidden">Mega</span>
+        <Award className={`w-4 h-4 ${!isLotofacil ? 'text-emerald-100' : 'text-emerald-500/80'}`} />
+        Mega-Sena
       </Link>
       <Link
         to="/lotofacil"
-        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full transition-colors ${
+        aria-current={isLotofacil ? 'page' : undefined}
+        className={`relative inline-flex items-center justify-center gap-2 min-h-11 px-3 sm:px-5 rounded-xl text-sm font-extrabold tracking-tight transition-all ${
           isLotofacil
-            ? 'bg-violet-950/80 border border-violet-500/40 text-violet-300'
-            : 'text-zinc-400 hover:text-white'
+            ? 'bg-gradient-to-br from-violet-500 to-fuchsia-700 text-white shadow-[0_0_18px_rgba(139,92,246,0.5)] border border-violet-300/40'
+            : 'text-zinc-400 hover:text-white hover:bg-[#1a1f2b]'
         }`}
-        title="Lotofácil"
       >
-        <Grid3x3 className="w-3.5 h-3.5" />
-        <span className="hidden min-[420px]:inline">Lotofácil</span>
-        <span className="min-[420px]:hidden">Loto</span>
+        <Grid3x3 className={`w-4 h-4 ${isLotofacil ? 'text-violet-100' : 'text-violet-400/80'}`} />
+        Lotofácil
       </Link>
     </div>
   )

@@ -53,6 +53,7 @@ screenshot.png
 # Snapshots gerados no CI / pnpm db:export-concursos
 public/concursos.json
 public/ultimo-oficial.json
+public/data/lotofacil-ultimo-oficial.json
 
 # Linux kernel core dumps (e.g. when oxfmt or pnpm crash)
 core.[0-9]*
