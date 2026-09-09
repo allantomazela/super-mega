@@ -16,6 +16,7 @@ import { AuthProvider } from './lib/AuthContext'
 import { LotofacilProvider } from '@/modules/lotofacil/hooks/LotofacilContext'
 import LotofacilIndex from '@/modules/lotofacil/pages/LotofacilIndex'
 import LotofacilResultados from '@/modules/lotofacil/pages/LotofacilResultados'
+import LotofacilHistorico from '@/modules/lotofacil/pages/LotofacilHistorico'
 
 const basename = import.meta.env.BASE_URL.replace(/\/$/, '')
 
@@ -37,6 +38,7 @@ const App = () => (
                   <Route path="/perfil" element={<Perfil />} />
                   <Route path="/lotofacil" element={<LotofacilIndex />} />
                   <Route path="/lotofacil/resultados" element={<LotofacilResultados />} />
+                  <Route path="/lotofacil/historico" element={<LotofacilHistorico />} />
                 </Route>
               </Route>
               <Route path="*" element={<PostAuthRedirect />} />

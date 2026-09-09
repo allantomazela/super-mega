@@ -143,6 +143,12 @@ export default function LotofacilIndex() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Link
+            to="/lotofacil/historico"
+            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-violet-500/30 text-xs font-semibold text-violet-300 hover:text-white hover:border-violet-400/50"
+          >
+            Meu histórico
+          </Link>
           <label className="flex items-center gap-1.5 text-xs text-zinc-400">
             Surpresa
             <select

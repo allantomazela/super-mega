@@ -2,6 +2,7 @@ import { Outlet, useLocation, Link } from 'react-router-dom'
 import { LogOut, User } from 'lucide-react'
 import { useAuth } from '@/lib/AuthContext'
 import { AlertaPremiosHistorico } from '@/components/AlertaPremiosHistorico'
+import { AlertaPremiosLotofacil } from '@/modules/lotofacil/components/AlertaPremiosLotofacil'
 import { InstalarPwa } from '@/components/InstalarPwa'
 import { LoteriaToggle } from '@/modules/lotofacil/components/LoteriaToggle'
 import logoMega from '@/assets/logo-mega.svg'
@@ -16,7 +17,7 @@ export default function Layout() {
 
   return (
     <div className="flex flex-col min-h-screen min-h-[100dvh] bg-[#0d0f12] text-foreground">
-      {!isLotofacil ? <AlertaPremiosHistorico /> : null}
+      {isLotofacil ? <AlertaPremiosLotofacil /> : <AlertaPremiosHistorico />}
 
       <header className="app-shell-header sticky top-0 z-40 w-full border-b border-[#262c34] bg-[#0d0f12]/90 backdrop-blur-md pt-[env(safe-area-inset-top)]">
         <div className="max-w-[1200px] mx-auto px-3 sm:px-6 py-2 sm:py-2.5 space-y-2">
