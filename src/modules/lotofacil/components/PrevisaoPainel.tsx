@@ -58,9 +58,10 @@ export function PrevisaoPainel({ concursos, filtros, onAplicar }: PrevisaoPainel
             Sugestão para o próximo concurso
           </h2>
           <p className="text-[11px] text-zinc-400 mt-1 leading-relaxed max-w-xl">
-            Heurística v{PREVISAO_VERSAO} sobre {previsao.janela} concursos.{' '}
-            <strong className="text-zinc-300">Não prevê o futuro</strong> nem garante prêmio —
-            serve só como apoio à escolha.
+            Heurística v{PREVISAO_VERSAO} sobre {previsao.janela} concursos. Use “Aplicar na grade”
+            como ponto de partida e refine com análise histórica + filtros.{' '}
+            <strong className="text-zinc-300">Não prevê o futuro</strong> nem garante prêmio — serve
+            para aumentar a aderência da sua escolha.
           </p>
         </div>
         <label className="text-[11px] text-zinc-400 flex items-center gap-2">

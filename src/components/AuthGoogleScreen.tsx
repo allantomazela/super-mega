@@ -3,6 +3,7 @@ import { Link, Navigate } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import { useAuth } from '@/lib/AuthContext'
 import { InstalarPwa } from '@/components/InstalarPwa'
+import { ThemeToggle } from '@/components/ThemeToggle'
 import styles from './AuthGoogleScreen.module.css'
 import logoMega from '@/assets/logo-mega.svg'
 
@@ -76,6 +77,9 @@ export function AuthGoogleScreen({ modo }: AuthGoogleScreenProps) {
   return (
     <div className={styles.screen}>
       <AuthBackdrop />
+      <div className="fixed top-3 right-3 z-20 flex items-center gap-2">
+        <ThemeToggle />
+      </div>
 
       <main className={styles.main}>
         <section className={styles.card} aria-labelledby="auth-brand-title">

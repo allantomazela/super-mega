@@ -28,7 +28,7 @@ export function probabilidadePremioLotofacil(n = LF_TICKET): {
   const p13 = probabilidadeAcertosLotofacil(13, n)
   const p14 = probabilidadeAcertosLotofacil(14, n)
   const p15 = probabilidadeAcertosLotofacil(15, n)
-  return { p11, p12, p13, p14, p15, pPremio: p11 + p12 + p13 + p14 + p15 }
+  return { p11, p12, p13, p14, p15, pPremio: p15 }
 }
 
 /** % de dezenas do jogo que batem com a sugestão de previsão (0–100). */
@@ -44,7 +44,7 @@ export interface RetrospectivaLotofacil {
   melhor: number
   media: number
   faixas: Record<'11' | '12' | '13' | '14' | '15', number>
-  /** Quantas vezes ≥11 (faixa de prêmio). */
+  /** Quantas vezes acertou exatamente 15 (alvo de premiação do app). */
   vezesPremio: number
 }
 
@@ -63,8 +63,8 @@ export function resumoRetrospectiva(
     melhor = Math.max(melhor, c.acertos)
     if (c.acertos >= 11 && c.acertos <= 15) {
       faixas[String(c.acertos) as keyof typeof faixas]++
-      vezesPremio++
     }
+    if (c.acertos >= 15) vezesPremio++
   }
   return {
     janela: comps.length,
@@ -75,12 +75,9 @@ export function resumoRetrospectiva(
   }
 }
 
+/** Neste app o alvo de premiação Lotofácil é somente 15 pontos. */
 export function labelPremioLotofacil(acertos: number): string | null {
   if (acertos >= 15) return '15 pontos'
-  if (acertos === 14) return '14 pontos'
-  if (acertos === 13) return '13 pontos'
-  if (acertos === 12) return '12 pontos'
-  if (acertos === 11) return '11 pontos'
   return null
 }
 

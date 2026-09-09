@@ -61,6 +61,10 @@ export function AnaliseHistoricaPainel({
           </select>
         </label>
       </div>
+      <p className="text-[11px] text-zinc-500 leading-relaxed">
+        Quentes/frias e médias ajudam a montar o grupo. Com 15+ dezenas selecionadas, a tabela
+        mostra quantos acertos seu grupo teria tido nos últimos sorteios (visão retrospectiva).
+      </p>
 
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
         <MiniStat label="Moldura méd." value={padroes.mediaMoldura.toFixed(1)} />

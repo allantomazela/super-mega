@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Dices, Filter, Grid3x3, Loader2, RotateCcw, Sparkles } from 'lucide-react'
+import { Dices, Grid3x3, Loader2, RotateCcw, Sparkles } from 'lucide-react'
 import { useLotofacil } from '@/modules/lotofacil/hooks/LotofacilContext'
 import { useLotofacilConcursos } from '@/modules/lotofacil/hooks/useLotofacilConcursos'
 import { NumeroGrid } from '@/modules/lotofacil/components/NumeroGrid'
@@ -8,6 +8,7 @@ import { FiltrosPainel } from '@/modules/lotofacil/components/FiltrosPainel'
 import { UltimoSorteioLotofacil } from '@/modules/lotofacil/components/UltimoSorteioLotofacil'
 import { AnaliseHistoricaPainel } from '@/modules/lotofacil/components/AnaliseHistoricaPainel'
 import { PrevisaoPainel } from '@/modules/lotofacil/components/PrevisaoPainel'
+import { LotofacilGuiaUsabilidade } from '@/modules/lotofacil/components/LotofacilGuiaUsabilidade'
 import { getCombinations, shuffleInPlace } from '@/modules/lotofacil/utils/math/combinacoes'
 import { avaliarFiltros, scoreFiltros } from '@/modules/lotofacil/utils/math/filtros'
 import { generateCoveringDesign } from '@/modules/lotofacil/utils/math/fechamentos'
@@ -38,7 +39,6 @@ export default function LotofacilIndex() {
     setFiltros,
     mode,
     setMode,
-    targetHits,
     setTargetHits,
     setJogosGerados,
   } = useLotofacil()
@@ -112,7 +112,8 @@ export default function LotofacilIndex() {
     setGerando(true)
     window.setTimeout(() => {
       try {
-        const result = generateCoveringDesign(selected, LF_TICKET, targetHits)
+        const result = generateCoveringDesign(selected, LF_TICKET, 15)
+        setTargetHits(15)
         if (result.tickets.length === 0) {
           setErro(result.message ?? 'Não foi possível gerar o fechamento.')
           return
@@ -138,7 +139,7 @@ export default function LotofacilIndex() {
             Lotofácil — Monte seu grupo
           </h1>
           <p className="text-sm text-zinc-400 mt-1">
-            Universo 1–25 · aposta de 15 dezenas · histórico:{' '}
+            Universo 1–25 · aposta de 15 · alvo de premiação: 15 pontos · histórico:{' '}
             {carregando ? 'carregando…' : `${concursos.length} concursos (${origem})`}
           </p>
         </div>
@@ -184,37 +185,12 @@ export default function LotofacilIndex() {
         </div>
       </div>
 
-      <div className="surface-card rounded-2xl p-2 grid grid-cols-2 gap-2 max-w-md">
-        <button
-          type="button"
-          onClick={() => setMode('filtros')}
-          className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-left text-sm font-bold ${
-            mode === 'filtros'
-              ? 'bg-violet-600 text-white border border-violet-300/40'
-              : 'bg-[#1a1f2b] border border-[#262c34] text-zinc-300'
-          }`}
-        >
-          <Filter className="w-4 h-4" />
-          Filtros + jogos
-        </button>
-        <button
-          type="button"
-          onClick={() => setMode('fechamento')}
-          className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-left text-sm font-bold ${
-            mode === 'fechamento'
-              ? 'bg-violet-600 text-white border border-violet-300/40'
-              : 'bg-[#1a1f2b] border border-[#262c34] text-zinc-300'
-          }`}
-        >
-          <Grid3x3 className="w-4 h-4" />
-          Fechamento
-        </button>
-      </div>
+      <LotofacilGuiaUsabilidade mode={mode} onChangeMode={setMode} />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-8 items-start">
         <section className="lg:col-span-7 space-y-4">
           <div className="surface-card rounded-2xl p-3 sm:p-5 border border-violet-500/20">
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-3">
               <span className="text-sm font-semibold text-white">
                 Dezenas selecionadas:{' '}
                 <span className="text-violet-300 tabular-nums">
@@ -223,6 +199,10 @@ export default function LotofacilIndex() {
               </span>
               <span className="text-[11px] text-zinc-500">{statusSelecao}</span>
             </div>
+            <p className="text-[11px] text-zinc-500 mb-3 leading-relaxed">
+              Dica: selecione 15 para um volante único, ou 16–18 para filtrar/fechar com custo
+              controlado. Clique de novo numa dezena para remover.
+            </p>
             <NumeroGrid selected={selected} onToggle={toggleNumber} />
           </div>
         </section>
@@ -230,7 +210,14 @@ export default function LotofacilIndex() {
         <aside className="lg:col-span-5 space-y-4">
           {mode === 'filtros' ? (
             <div className="surface-card rounded-2xl p-4 sm:p-5 border border-[#262c34] space-y-4">
-              <h2 className="text-base font-bold text-white">Filtros estatísticos</h2>
+              <div>
+                <h2 className="text-base font-bold text-white">Filtros estatísticos</h2>
+                <p className="text-[11px] text-zinc-500 mt-1 leading-relaxed">
+                  As faixas abaixo descrevem o “perfil típico” dos sorteios. O gerador só mantém
+                  bilhetes dentro delas e ordena pelo score (0–100). Comece com os valores padrão;
+                  se a lista vier vazia, afrouxe um pouco.
+                </p>
+              </div>
               <FiltrosPainel filtros={filtros} onChange={setFiltros} />
               <button
                 type="button"
@@ -246,24 +233,15 @@ export default function LotofacilIndex() {
             <div className="surface-card rounded-2xl p-4 sm:p-5 border border-[#262c34] space-y-4">
               <h2 className="text-base font-bold text-white">Fechamento (covering guloso)</h2>
               <p className="text-xs text-zinc-400 leading-relaxed">
-                Gera o menor conjunto possível de volantes de 15 que cobre todos os subconjuntos de{' '}
-                {targetHits} pontos do seu grupo (teto seguro: até {LF_MAX_POOL} dezenas). Preço
-                simples: {formatCurrencyBRL(LF_PRECO_SIMPLES)}.
+                Alvo fixo: <strong className="text-zinc-200">15 pontos</strong>. Gera volantes de 15
+                que cobrem todas as combinações de 15 do seu grupo — se as dezenas sorteadas
+                estiverem no pool, algum bilhete acerta os 15 (teto seguro: até {LF_MAX_POOL}{' '}
+                dezenas). Preço simples: {formatCurrencyBRL(LF_PRECO_SIMPLES)}.
               </p>
-              <label className="flex items-center justify-between text-xs text-zinc-300">
-                Garantia alvo (pontos)
-                <select
-                  value={targetHits}
-                  onChange={(e) => setTargetHits(Number(e.target.value))}
-                  className="h-8 rounded-lg bg-[#1a1f2b] border border-[#262c34] px-2"
-                >
-                  {[11, 12, 13, 14].map((n) => (
-                    <option key={n} value={n}>
-                      {n} pontos
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <div className="flex items-center justify-between text-xs text-zinc-300 rounded-xl border border-violet-500/25 bg-violet-950/20 px-3 py-2">
+                <span>Garantia alvo</span>
+                <span className="font-extrabold text-violet-200">15 pontos</span>
+              </div>
               <button
                 type="button"
                 disabled={gerando || count < LF_TICKET}
@@ -271,7 +249,7 @@ export default function LotofacilIndex() {
                 className="w-full py-3 rounded-xl font-bold text-white bg-violet-600 hover:bg-violet-500 disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {gerando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Grid3x3 className="w-4 h-4" />}
-                Gerar fechamento
+                Gerar fechamento (15 pontos)
               </button>
             </div>
           )}

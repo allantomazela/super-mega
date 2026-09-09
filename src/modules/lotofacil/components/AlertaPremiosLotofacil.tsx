@@ -16,7 +16,7 @@ import {
 
 /**
  * Conferência automática dos jogos Lotofácil pendentes (Neon)
- * contra o último sorteio oficial. Toast se houver 11–15 pontos.
+ * contra o último sorteio oficial. Toast se acertar 15 pontos.
  */
 export function AlertaPremiosLotofacil() {
   const { user } = useAuth()

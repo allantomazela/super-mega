@@ -58,7 +58,9 @@ export default function LotofacilHistorico() {
               Meu histórico Lotofácil
             </h1>
             <p className="text-xs text-zinc-400 mt-1">
-              Jogos salvos na nuvem (Neon), isolados por sua conta Google.
+              Jogos salvos na nuvem (Neon), isolados por sua conta Google. Pendentes são conferidos
+              automaticamente ao abrir a Lotofácil após o sorteio; use “Conferir pendentes” se
+              quiser forçar agora. Premiação do app: somente 15 pontos.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -232,8 +234,8 @@ function JogoCard({
         </p>
       ) : jogo.retrospectiva ? (
         <p className="text-[10px] text-zinc-500">
-          Retrospectiva ({jogo.retrospectiva.janela}): melhor {jogo.retrospectiva.melhor} · ≥11 em{' '}
-          {jogo.retrospectiva.vezesPremio}×
+          Retrospectiva ({jogo.retrospectiva.janela}): melhor {jogo.retrospectiva.melhor} · 15 pts
+          em {jogo.retrospectiva.vezesPremio}×
         </p>
       ) : null}
     </article>

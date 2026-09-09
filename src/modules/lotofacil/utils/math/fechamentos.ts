@@ -25,13 +25,13 @@ function keyOf(nums: number[]): string {
  * Garante (quando completa) que todo subconjunto de `targetHits` do pool
  * está contido em ao menos um bilhete de `ticketSize`.
  *
- * Condicional clássica: se as 15 sorteadas ⊆ pool, e targetHits=14,
- * então algum bilhete acerta ≥14 (na prática a garantia depende do covering).
+ * Condicional clássica: se as 15 sorteadas ⊆ pool, e targetHits=15,
+ * então algum bilhete acerta os 15 (covering = desdobramento completo das C(pool,15)).
  */
 export function generateCoveringDesign(
   selectedNumbers: number[],
   ticketSize: number = LF_TICKET,
-  targetHits: number = 14,
+  targetHits: number = 15,
   options: { maxTickets?: number; softLimit?: number } = {},
 ): CoveringResult {
   const pool = [...new Set(selectedNumbers)].filter((n) => n >= 1 && n <= 25).sort((a, b) => a - b)
@@ -124,7 +124,7 @@ export function estimarCustoCovering(poolSize: number, ticketSize = LF_TICKET): 
 }
 
 /** Estimativa grosseira do nº de bilhetes do guloso (não é ótimo matemático). */
-export function estimarTicketsGuloso(poolSize: number, ticketSize = LF_TICKET, targetHits = 14): number {
+export function estimarTicketsGuloso(poolSize: number, ticketSize = LF_TICKET, targetHits = 15): number {
   if (poolSize <= ticketSize) return 1
   const need = binomialCoefficient(poolSize, targetHits)
   const perTicket = binomialCoefficient(ticketSize, targetHits)

@@ -176,6 +176,8 @@ export default function LotofacilResultados() {
         <p className="text-[11px] text-zinc-500">
           Marque só os jogos que quiser guardar. Critério em destaque:{' '}
           <strong className="text-zinc-300">afinidade com a previsão v{PREVISAO_VERSAO}</strong>.
+          Dezenas destacadas em roxo batem com a sugestão do próximo concurso — use isso + score +
+          retrospectiva (15 pts no passado) para escolher o que salvar.
         </p>
       </section>
 
@@ -211,13 +213,14 @@ export default function LotofacilResultados() {
             <Mini label="Afinidade previsão" value={`${melhor.afinidade}%`} />
             <Mini label="Score filtros" value={`${melhor.score}%`} />
             <Mini
-              label={`≥11 nos ${melhor.retro.janela} últ.`}
+              label={`15 pts nos ${melhor.retro.janela} últ.`}
               value={`${melhor.retro.vezesPremio}×`}
             />
             <Mini label="Melhor no histórico" value={`${melhor.retro.melhor} pts`} />
           </div>
           <p className="text-[10px] text-zinc-500 leading-relaxed">
-            Chance teórica de 15 pontos (qualquer volante simples):{' '}
+            Alvo de premiação: <strong className="text-zinc-300">15 pontos</strong>. Chance teórica
+            (volante simples):{' '}
             <strong className="text-zinc-300">{formatChance1Em(probs.p15)}</strong>. A afinidade
             mede alinhamento com a heurística — não altera essa probabilidade.
           </p>
@@ -249,9 +252,9 @@ export default function LotofacilResultados() {
           ))}
         </div>
         <p className="text-[10px] text-zinc-500">
-          P(11) {formatChance1Em(probs.p11)} · P(12) {formatChance1Em(probs.p12)} · P(13){' '}
-          {formatChance1Em(probs.p13)} · P(14) {formatChance1Em(probs.p14)} · P(15){' '}
-          {formatChance1Em(probs.p15)}
+          Foco no alvo 15: {formatChance1Em(probs.p15)} (P11–P14 só referência:{' '}
+          {formatChance1Em(probs.p11)} / {formatChance1Em(probs.p12)} / {formatChance1Em(probs.p13)}{' '}
+          / {formatChance1Em(probs.p14)})
         </p>
       </section>
 
@@ -340,7 +343,7 @@ export default function LotofacilResultados() {
                 {av.metricas.soma}
                 {anterior ? ` · Rep ${av.metricas.repetidosAnterior}` : ''}
                 <span className="block text-zinc-400 mt-1">
-                  Histórico: melhor {retro.melhor} · ≥11 em {retro.vezesPremio}/{retro.janela}
+                  Histórico: melhor {retro.melhor} · 15 pts em {retro.vezesPremio}/{retro.janela}
                 </span>
               </div>
             </div>

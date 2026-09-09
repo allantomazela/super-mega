@@ -70,7 +70,7 @@ export function LotofacilProvider({ children }: { children: ReactNode }) {
     () => initial.filtros ?? FILTROS_LOTOFACIL_PADRAO,
   )
   const [mode, setMode] = useState<LotofacilMode>(() => initial.mode ?? 'filtros')
-  const [targetHits, setTargetHits] = useState(() => initial.targetHits ?? 14)
+  const [targetHits, setTargetHits] = useState(() => 15)
   const [jogosGerados, setJogosGerados] = useState<number[][]>([])
 
   const persist = useCallback(

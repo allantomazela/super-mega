@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { Toaster } from '@/components/ui/toaster'
 import { Toaster as Sonner } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { ThemeProvider } from '@/components/ThemeProvider'
 import Index from './pages/Index'
 import Resultados from './pages/Resultados'
 import Login from './pages/Login'
@@ -21,33 +22,35 @@ import LotofacilHistorico from '@/modules/lotofacil/pages/LotofacilHistorico'
 const basename = import.meta.env.BASE_URL.replace(/\/$/, '')
 
 const App = () => (
-  <BrowserRouter basename={basename || undefined}>
-    <TooltipProvider>
-      <AuthProvider>
-        <MegaProvider>
-          <LotofacilProvider>
-            <Toaster />
-            <Sonner />
-            <Routes>
-              <Route path="/login" element={<Login />} />
-              <Route path="/cadastro" element={<Cadastro />} />
-              <Route element={<RequireAuth />}>
-                <Route element={<Layout />}>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/resultados" element={<Resultados />} />
-                  <Route path="/perfil" element={<Perfil />} />
-                  <Route path="/lotofacil" element={<LotofacilIndex />} />
-                  <Route path="/lotofacil/resultados" element={<LotofacilResultados />} />
-                  <Route path="/lotofacil/historico" element={<LotofacilHistorico />} />
+  <ThemeProvider>
+    <BrowserRouter basename={basename || undefined}>
+      <TooltipProvider>
+        <AuthProvider>
+          <MegaProvider>
+            <LotofacilProvider>
+              <Toaster />
+              <Sonner />
+              <Routes>
+                <Route path="/login" element={<Login />} />
+                <Route path="/cadastro" element={<Cadastro />} />
+                <Route element={<RequireAuth />}>
+                  <Route element={<Layout />}>
+                    <Route path="/" element={<Index />} />
+                    <Route path="/resultados" element={<Resultados />} />
+                    <Route path="/perfil" element={<Perfil />} />
+                    <Route path="/lotofacil" element={<LotofacilIndex />} />
+                    <Route path="/lotofacil/resultados" element={<LotofacilResultados />} />
+                    <Route path="/lotofacil/historico" element={<LotofacilHistorico />} />
+                  </Route>
                 </Route>
-              </Route>
-              <Route path="*" element={<PostAuthRedirect />} />
-            </Routes>
-          </LotofacilProvider>
-        </MegaProvider>
-      </AuthProvider>
-    </TooltipProvider>
-  </BrowserRouter>
+                <Route path="*" element={<PostAuthRedirect />} />
+              </Routes>
+            </LotofacilProvider>
+          </MegaProvider>
+        </AuthProvider>
+      </TooltipProvider>
+    </BrowserRouter>
+  </ThemeProvider>
 )
 
 export default App
