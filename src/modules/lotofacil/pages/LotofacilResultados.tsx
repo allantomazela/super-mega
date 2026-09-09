@@ -9,6 +9,8 @@ import {
   Loader2,
   Sparkles,
   Star,
+  Trophy,
+  Wand2,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useLotofacil } from '@/modules/lotofacil/hooks/LotofacilContext'
@@ -20,7 +22,7 @@ import {
 } from '@/modules/lotofacil/utils/math/combinacoes'
 import { avaliarFiltros, scoreFiltros } from '@/modules/lotofacil/utils/math/filtros'
 import { formatCurrencyBRL } from '@/modules/lotofacil/utils/math/caixaOficial'
-import { LF_PRECO_SIMPLES } from '@/modules/lotofacil/utils/math/constants'
+import { LF_PRECO_SIMPLES, LF_TICKET } from '@/modules/lotofacil/utils/math/constants'
 import {
   PREVISAO_VERSAO,
   compararComHistorico,
@@ -32,9 +34,24 @@ import {
   probabilidadePremioLotofacil,
   resumoRetrospectiva,
 } from '@/modules/lotofacil/utils/math/probabilidade'
+import {
+  clampQtdJogosLotofacil,
+  combinarPoolDeJogos,
+  gerarJogosFiltrados,
+  LF_QTD_JOGOS_MAX,
+  LF_QTD_JOGOS_MIN,
+  LF_QTD_JOGOS_PADRAO,
+} from '@/modules/lotofacil/utils/math/gerarJogosFiltrados'
 
 export default function LotofacilResultados() {
-  const { jogosGerados, selected, filtros, mode } = useLotofacil()
+  const {
+    jogosGerados,
+    selected,
+    filtros,
+    mode,
+    applySelection,
+    setJogosGerados,
+  } = useLotofacil()
   const { concursos } = useLotofacilConcursos()
   const { salvar, salvando } = useHistoricoLotofacilNeon()
   const anterior = concursos[0]?.dezenas ?? null
@@ -43,6 +60,9 @@ export default function LotofacilResultados() {
   const [copied, setCopied] = useState<number | null>(null)
   const [jogoCmp, setJogoCmp] = useState(0)
   const [selecionados, setSelecionados] = useState<Set<number>>(() => new Set())
+  const [ordenacao, setOrdenacao] = useState<'score' | 'afinidade'>('score')
+  const [qtdCombinados, setQtdCombinados] = useState(LF_QTD_JOGOS_PADRAO)
+  const [gerandoCombinados, setGerandoCombinados] = useState(false)
 
   const previsao = useMemo(
     () => preverProximasDezenas(concursos, 15, 120, 'equilibrado'),
@@ -51,14 +71,34 @@ export default function LotofacilResultados() {
   const probs = useMemo(() => probabilidadePremioLotofacil(15), [])
 
   const enriquecidos = useMemo(() => {
-    return jogosGerados.map((jogo, idx) => {
+    const lista = jogosGerados.map((jogo, idx) => {
       const afinidade = afinidadeComPrevisao(jogo, previsao.dezenas)
       const score = scoreFiltros(jogo, filtros, anterior)
       const av = avaliarFiltros(jogo, filtros, anterior)
       const retro = resumoRetrospectiva(jogo, concursos, 50)
       return { idx, jogo, afinidade, score, av, retro }
     })
-  }, [jogosGerados, previsao.dezenas, filtros, anterior, concursos])
+    return [...lista].sort((a, b) => {
+      if (ordenacao === 'score') {
+        return b.score - a.score || b.afinidade - a.afinidade || a.idx - b.idx
+      }
+      return b.afinidade - a.afinidade || b.score - a.score || a.idx - b.idx
+    })
+  }, [jogosGerados, previsao.dezenas, filtros, anterior, concursos, ordenacao])
+
+  const melhorScoreIdx = useMemo(() => {
+    if (!enriquecidos.length) return -1
+    let best = enriquecidos[0]!
+    for (const cur of enriquecidos) {
+      if (
+        cur.score > best.score ||
+        (cur.score === best.score && cur.afinidade > best.afinidade)
+      ) {
+        best = cur
+      }
+    }
+    return best.idx
+  }, [enriquecidos])
 
   const melhorAfinidadeIdx = useMemo(() => {
     if (!enriquecidos.length) return -1
@@ -73,6 +113,14 @@ export default function LotofacilResultados() {
     }
     return best.idx
   }, [enriquecidos])
+
+  const poolPreview = useMemo(() => {
+    const jogos = enriquecidos
+      .filter((e) => selecionados.has(e.idx))
+      .map((e) => e.jogo)
+    if (!jogos.length) return []
+    return combinarPoolDeJogos(jogos)
+  }, [enriquecidos, selecionados])
 
   const comparativo = useMemo(() => {
     const jogo = jogosGerados[jogoCmp]
@@ -96,7 +144,8 @@ export default function LotofacilResultados() {
   }
 
   const custo = jogosGerados.length * LF_PRECO_SIMPLES
-  const melhor = enriquecidos.find((e) => e.idx === melhorAfinidadeIdx)
+  const melhorScore = enriquecidos.find((e) => e.idx === melhorScoreIdx)
+  const melhorAfinidade = enriquecidos.find((e) => e.idx === melhorAfinidadeIdx)
 
   function toggleSel(idx: number) {
     setSelecionados((prev) => {
@@ -105,6 +154,50 @@ export default function LotofacilResultados() {
       else next.add(idx)
       return next
     })
+  }
+
+  function marcarTopPorScore(qtd: number) {
+    const top = [...enriquecidos]
+      .sort((a, b) => b.score - a.score || b.afinidade - a.afinidade || a.idx - b.idx)
+      .slice(0, Math.min(qtd, enriquecidos.length))
+    setSelecionados(new Set(top.map((t) => t.idx)))
+    toast.success(`Top ${top.length} por score marcados.`)
+  }
+
+  function gerarCombinadosDaSelecao() {
+    const escolhidos = enriquecidos.filter((e) => selecionados.has(e.idx))
+    if (!escolhidos.length) {
+      toast.message('Selecione ao menos um jogo para combinar.')
+      return
+    }
+    const pool = combinarPoolDeJogos(escolhidos.map((e) => e.jogo))
+    if (pool.length < LF_TICKET) {
+      toast.error(
+        `Pool combinado com ${pool.length} dezenas — precisa de ao menos ${LF_TICKET}.`,
+      )
+      return
+    }
+    const qtd = clampQtdJogosLotofacil(qtdCombinados)
+    setGerandoCombinados(true)
+    window.setTimeout(() => {
+      try {
+        applySelection(pool)
+        const { jogos, aviso } = gerarJogosFiltrados(pool, filtros, anterior, qtd)
+        if (jogos.length === 0) {
+          toast.error(aviso ?? 'Não foi possível gerar jogos combinados.')
+          return
+        }
+        setJogosGerados(jogos)
+        setSelecionados(new Set())
+        setJogoCmp(0)
+        toast.success(
+          `${jogos.length} jogo(s) gerados a partir do pool combinado (${pool.length} dezenas).`,
+        )
+        if (aviso) toast.message(aviso)
+      } finally {
+        setGerandoCombinados(false)
+      }
+    }, 30)
   }
 
   async function salvarEscolhidos() {
@@ -174,26 +267,136 @@ export default function LotofacilResultados() {
           </div>
         </div>
         <p className="text-[11px] text-zinc-500">
-          Marque só os jogos que quiser guardar. Critério em destaque:{' '}
-          <strong className="text-zinc-300">afinidade com a previsão v{PREVISAO_VERSAO}</strong>.
-          Dezenas destacadas em roxo batem com a sugestão do próximo concurso — use isso + score +
-          retrospectiva (15 pts no passado) para escolher o que salvar.
+          Marque só os jogos que quiser guardar ou combinar. Critério em destaque:{' '}
+          <strong className="text-zinc-300">afinidade com a previsão v{PREVISAO_VERSAO}</strong> e{' '}
+          <strong className="text-zinc-300">score dos filtros</strong>. Dezenas destacadas em roxo
+          batem com a sugestão do próximo concurso — use isso + retrospectiva (15 pts no passado)
+          para escolher o que salvar.
         </p>
       </section>
 
-      {melhor ? (
-        <section className="rounded-2xl p-4 sm:p-5 border border-fuchsia-400/40 bg-gradient-to-br from-fuchsia-950/40 to-violet-950/30 space-y-3 shadow-[0_0_28px_rgba(168,85,247,0.2)]">
+      <section className="surface-card rounded-2xl p-4 sm:p-5 border border-emerald-500/25 space-y-3">
+        <h2 className="text-sm font-bold text-white inline-flex items-center gap-2">
+          <Wand2 className="w-4 h-4 text-emerald-400" />
+          Selecionar melhores scores e gerar combinados
+        </h2>
+        <p className="text-[11px] text-zinc-500 leading-relaxed">
+          Marque os Top N por score, revise o pool unificado das dezenas e gere uma nova leva
+          filtrada a partir desse pool.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {[3, 5, 10].map((n) => (
+            <button
+              key={n}
+              type="button"
+              onClick={() => marcarTopPorScore(n)}
+              className="h-9 px-3 rounded-xl border border-emerald-500/40 bg-emerald-950/30 text-xs font-bold text-emerald-200 hover:bg-emerald-900/40"
+            >
+              Top {n}
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => {
+              setSelecionados(new Set())
+              toast.message('Seleção limpa.')
+            }}
+            className="h-9 px-3 rounded-xl border border-[#262c34] text-xs font-semibold text-zinc-400 hover:text-white"
+          >
+            Limpar seleção
+          </button>
+          <div className="inline-flex rounded-xl border border-[#262c34] overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setOrdenacao('score')}
+              className={`h-9 px-3 text-xs font-bold ${
+                ordenacao === 'score'
+                  ? 'bg-emerald-600 text-white'
+                  : 'bg-[#161a1f] text-zinc-400 hover:text-white'
+              }`}
+            >
+              Ordenar: score
+            </button>
+            <button
+              type="button"
+              onClick={() => setOrdenacao('afinidade')}
+              className={`h-9 px-3 text-xs font-bold ${
+                ordenacao === 'afinidade'
+                  ? 'bg-fuchsia-600 text-white'
+                  : 'bg-[#161a1f] text-zinc-400 hover:text-white'
+              }`}
+            >
+              Ordenar: afinidade
+            </button>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="space-y-1">
+            <span className="block text-[10px] uppercase tracking-wide text-zinc-500">
+              Qtd. a gerar ({LF_QTD_JOGOS_MIN}–{LF_QTD_JOGOS_MAX})
+            </span>
+            <input
+              type="number"
+              min={LF_QTD_JOGOS_MIN}
+              max={LF_QTD_JOGOS_MAX}
+              value={qtdCombinados}
+              onChange={(e) => setQtdCombinados(clampQtdJogosLotofacil(Number(e.target.value)))}
+              className="w-24 h-10 rounded-xl bg-[#161a1f] border border-[#262c34] px-3 text-sm text-white tabular-nums"
+            />
+          </label>
+          <button
+            type="button"
+            disabled={gerandoCombinados || selecionados.size === 0}
+            onClick={() => gerarCombinadosDaSelecao()}
+            className="inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white text-sm font-bold"
+          >
+            {gerandoCombinados ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Wand2 className="w-4 h-4" />
+            )}
+            Combinar e gerar
+          </button>
+        </div>
+        {poolPreview.length > 0 ? (
+          <div className="space-y-1.5">
+            <p className="text-[10px] uppercase tracking-wide text-zinc-500">
+              Preview do pool combinado · {poolPreview.length} dezenas
+              {poolPreview.length < LF_TICKET
+                ? ` (faltam ${LF_TICKET - poolPreview.length})`
+                : ''}
+            </p>
+            <div className="flex flex-wrap gap-1">
+              {poolPreview.map((n) => (
+                <span
+                  key={n}
+                  className="w-7 h-7 rounded-lg bg-emerald-950/50 border border-emerald-500/30 text-emerald-200 text-[11px] font-bold flex items-center justify-center"
+                >
+                  {formatTwoDigits(n)}
+                </span>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <p className="text-[11px] text-zinc-600">
+            Nenhum jogo marcado — o preview do pool aparece ao selecionar.
+          </p>
+        )}
+      </section>
+
+      {melhorScore ? (
+        <section className="rounded-2xl p-4 sm:p-5 border border-emerald-400/40 bg-gradient-to-br from-emerald-950/40 to-teal-950/30 space-y-3 shadow-[0_0_28px_rgba(16,185,129,0.15)]">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-base font-bold text-white inline-flex items-center gap-2">
-              <Star className="w-5 h-5 text-fuchsia-300 fill-fuchsia-400/40" />
-              Melhor afinidade · Jogo {melhor.idx + 1}
+              <Trophy className="w-5 h-5 text-emerald-300" />
+              Melhor score · Jogo {melhorScore.idx + 1}
             </h2>
-            <span className="text-2xl font-extrabold text-fuchsia-300 tabular-nums">
-              {melhor.afinidade}%
+            <span className="text-2xl font-extrabold text-emerald-300 tabular-nums">
+              {melhorScore.score}%
             </span>
           </div>
           <div className="flex flex-wrap gap-1.5">
-            {melhor.jogo.map((n) => {
+            {melhorScore.jogo.map((n) => {
               const hit = previsao.dezenas.includes(n)
               return (
                 <span
@@ -210,13 +413,67 @@ export default function LotofacilResultados() {
             })}
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-            <Mini label="Afinidade previsão" value={`${melhor.afinidade}%`} />
-            <Mini label="Score filtros" value={`${melhor.score}%`} />
+            <Mini label="Score filtros" value={`${melhorScore.score}%`} accent="emerald" />
+            <Mini label="Afinidade previsão" value={`${melhorScore.afinidade}%`} accent="emerald" />
             <Mini
-              label={`15 pts nos ${melhor.retro.janela} últ.`}
-              value={`${melhor.retro.vezesPremio}×`}
+              label={`15 pts nos ${melhorScore.retro.janela} últ.`}
+              value={`${melhorScore.retro.vezesPremio}×`}
+              accent="emerald"
             />
-            <Mini label="Melhor no histórico" value={`${melhor.retro.melhor} pts`} />
+            <Mini
+              label="Melhor no histórico"
+              value={`${melhorScore.retro.melhor} pts`}
+              accent="emerald"
+            />
+          </div>
+          <label className="inline-flex items-center gap-2 text-xs text-zinc-300 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={selecionados.has(melhorScore.idx)}
+              onChange={() => toggleSel(melhorScore.idx)}
+              className="rounded border-zinc-600"
+            />
+            Incluir na seleção (salvar / combinar)
+          </label>
+        </section>
+      ) : null}
+
+      {melhorAfinidade ? (
+        <section className="rounded-2xl p-4 sm:p-5 border border-fuchsia-400/40 bg-gradient-to-br from-fuchsia-950/40 to-violet-950/30 space-y-3 shadow-[0_0_28px_rgba(168,85,247,0.2)]">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-base font-bold text-white inline-flex items-center gap-2">
+              <Star className="w-5 h-5 text-fuchsia-300 fill-fuchsia-400/40" />
+              Melhor afinidade · Jogo {melhorAfinidade.idx + 1}
+            </h2>
+            <span className="text-2xl font-extrabold text-fuchsia-300 tabular-nums">
+              {melhorAfinidade.afinidade}%
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {melhorAfinidade.jogo.map((n) => {
+              const hit = previsao.dezenas.includes(n)
+              return (
+                <span
+                  key={n}
+                  className={`w-9 h-9 rounded-xl text-xs font-extrabold flex items-center justify-center ${
+                    hit
+                      ? 'bg-gradient-to-br from-violet-500 to-fuchsia-600 text-white'
+                      : 'bg-[#161a1f] border border-[#262c34] text-zinc-400'
+                  }`}
+                >
+                  {formatTwoDigits(n)}
+                </span>
+              )
+            })}
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+            <Mini label="Afinidade previsão" value={`${melhorAfinidade.afinidade}%`} />
+            <Mini label="Score filtros" value={`${melhorAfinidade.score}%`} />
+            <Mini
+              label={`15 pts nos ${melhorAfinidade.retro.janela} últ.`}
+              value={`${melhorAfinidade.retro.vezesPremio}×`}
+            />
+            <Mini label="Melhor no histórico" value={`${melhorAfinidade.retro.melhor} pts`} />
           </div>
           <p className="text-[10px] text-zinc-500 leading-relaxed">
             Alvo de premiação: <strong className="text-zinc-300">15 pontos</strong>. Chance teórica
@@ -227,11 +484,11 @@ export default function LotofacilResultados() {
           <label className="inline-flex items-center gap-2 text-xs text-zinc-300 cursor-pointer">
             <input
               type="checkbox"
-              checked={selecionados.has(melhor.idx)}
-              onChange={() => toggleSel(melhor.idx)}
+              checked={selecionados.has(melhorAfinidade.idx)}
+              onChange={() => toggleSel(melhorAfinidade.idx)}
               className="rounded border-zinc-600"
             />
-            Incluir este jogo na seleção para salvar
+            Incluir na seleção (salvar / combinar)
           </label>
         </section>
       ) : null}
@@ -262,7 +519,8 @@ export default function LotofacilResultados() {
         {enriquecidos.map(({ idx, jogo, afinidade, score, av, retro }) => {
           const isCopied = copied === idx
           const ativo = jogoCmp === idx
-          const isBest = idx === melhorAfinidadeIdx
+          const isBestAfinidade = idx === melhorAfinidadeIdx
+          const isBestScore = idx === melhorScoreIdx
           const marcado = selecionados.has(idx)
           return (
             <div
@@ -274,16 +532,18 @@ export default function LotofacilResultados() {
                 if (e.key === 'Enter' || e.key === ' ') setJogoCmp(idx)
               }}
               className={`surface-card rounded-xl p-3.5 border space-y-2.5 cursor-pointer transition-colors ${
-                isBest
-                  ? 'border-fuchsia-500/50 ring-1 ring-fuchsia-400/30'
-                  : ativo
-                    ? 'border-violet-500/60 ring-1 ring-violet-400/30'
-                    : 'border-[#262c34] hover:border-violet-500/40'
+                isBestScore
+                  ? 'border-emerald-500/50 ring-1 ring-emerald-400/30'
+                  : isBestAfinidade
+                    ? 'border-fuchsia-500/50 ring-1 ring-fuchsia-400/30'
+                    : ativo
+                      ? 'border-violet-500/60 ring-1 ring-violet-400/30'
+                      : 'border-[#262c34] hover:border-violet-500/40'
               }`}
             >
               <div className="flex items-center justify-between gap-2">
                 <label
-                  className="inline-flex items-center gap-2 text-xs font-bold text-violet-300"
+                  className="inline-flex items-center gap-2 text-xs font-bold text-violet-300 flex-wrap"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <input
@@ -293,15 +553,20 @@ export default function LotofacilResultados() {
                     className="rounded border-zinc-600"
                   />
                   Jogo {idx + 1}
-                  {isBest ? (
+                  {isBestScore ? (
+                    <span className="text-[9px] uppercase tracking-wide px-1.5 py-0.5 rounded-md bg-emerald-600/30 text-emerald-200">
+                      Top score
+                    </span>
+                  ) : null}
+                  {isBestAfinidade ? (
                     <span className="text-[9px] uppercase tracking-wide px-1.5 py-0.5 rounded-md bg-fuchsia-600/30 text-fuchsia-200">
                       Top afinidade
                     </span>
                   ) : null}
                 </label>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-bold text-fuchsia-300">{afinidade}% af.</span>
-                  <span className="text-[10px] text-zinc-500">Score {score}%</span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-[10px] font-bold text-emerald-300">{score}%</span>
+                  <span className="text-[10px] font-bold text-fuchsia-300">{afinidade}%</span>
                   <button
                     type="button"
                     onClick={(e) => {
@@ -388,11 +653,25 @@ export default function LotofacilResultados() {
   )
 }
 
-function Mini({ label, value }: { label: string; value: string }) {
+function Mini({
+  label,
+  value,
+  accent = 'fuchsia',
+}: {
+  label: string
+  value: string
+  accent?: 'fuchsia' | 'emerald'
+}) {
   return (
     <div className="rounded-xl bg-[#161a1f]/80 border border-[#262c34] px-2.5 py-2">
       <div className="text-[9px] uppercase tracking-wide text-zinc-500">{label}</div>
-      <div className="text-sm font-extrabold text-fuchsia-200 tabular-nums">{value}</div>
+      <div
+        className={`text-sm font-extrabold tabular-nums ${
+          accent === 'emerald' ? 'text-emerald-200' : 'text-fuchsia-200'
+        }`}
+      >
+        {value}
+      </div>
     </div>
   )
 }

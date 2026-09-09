@@ -13,10 +13,10 @@ const MODOS: {
   {
     key: 'filtros',
     label: 'Filtros + jogos',
-    hint: 'Até 10 volantes ranqueados',
+    hint: 'Quantidade à escolha + scores',
     icon: Filter,
     how: 'Você monta um grupo (15–20 dezenas). O app amostra combinações de 15, aplica as faixas (moldura, ímpares, soma, repetência…) e devolve os bilhetes com melhor score de adequação. Use isso para explorar candidatos alinhados ao padrão histórico.',
-    when: 'Ideal quando quer poucos jogos para avaliar afinidade com a previsão e salvar só os melhores no histórico.',
+    when: 'Ideal quando quer escolher quantos jogos gerar, ranquear por score e depois combinar os melhores em um novo pool.',
   },
   {
     key: 'fechamento',
@@ -42,12 +42,12 @@ const PASSOS = [
   {
     n: '3',
     title: 'Gere com o modo certo',
-    text: 'Filtros = poucos jogos ranqueados. Fechamento = cobertura total do grupo para alvo 15.',
+    text: 'Filtros = escolha a quantidade e ranqueie por score. Fechamento = cobertura total do grupo para alvo 15.',
   },
   {
     n: '4',
     title: 'Compare nos Resultados',
-    text: 'Priorize alta afinidade com a previsão + score de filtros + retrospectiva (quantas vezes faria 15 no passado).',
+    text: 'Priorize score alto e afinidade. Marque Top 3/5/10, combine o pool e gere uma nova leva — ou salve só o que for jogar.',
   },
   {
     n: '5',

@@ -9,8 +9,6 @@ import { UltimoSorteioLotofacil } from '@/modules/lotofacil/components/UltimoSor
 import { AnaliseHistoricaPainel } from '@/modules/lotofacil/components/AnaliseHistoricaPainel'
 import { PrevisaoPainel } from '@/modules/lotofacil/components/PrevisaoPainel'
 import { LotofacilGuiaUsabilidade } from '@/modules/lotofacil/components/LotofacilGuiaUsabilidade'
-import { getCombinations, shuffleInPlace } from '@/modules/lotofacil/utils/math/combinacoes'
-import { avaliarFiltros, scoreFiltros } from '@/modules/lotofacil/utils/math/filtros'
 import { generateCoveringDesign } from '@/modules/lotofacil/utils/math/fechamentos'
 import {
   formatCurrencyBRL,
@@ -23,9 +21,13 @@ import {
   LF_TICKET,
 } from '@/modules/lotofacil/utils/math/constants'
 import { binomialCoefficient } from '@/modules/lotofacil/utils/math/combinacoes'
-
-const QTD_JOGOS_FILTRO = 10
-const MAX_SAMPLE = 8000
+import {
+  clampQtdJogosLotofacil,
+  gerarJogosFiltrados,
+  LF_QTD_JOGOS_MAX,
+  LF_QTD_JOGOS_MIN,
+  LF_QTD_JOGOS_PADRAO,
+} from '@/modules/lotofacil/utils/math/gerarJogosFiltrados'
 
 export default function LotofacilIndex() {
   const navigate = useNavigate()
@@ -46,6 +48,7 @@ export default function LotofacilIndex() {
   const [gerando, setGerando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [qtdSurpresa, setQtdSurpresa] = useState(18)
+  const [qtdJogos, setQtdJogos] = useState(LF_QTD_JOGOS_PADRAO)
 
   const anterior = concursos[0]?.dezenas ?? null
   const count = selected.length
@@ -67,35 +70,13 @@ export default function LotofacilIndex() {
     setGerando(true)
     window.setTimeout(() => {
       try {
-        if (selected.length === LF_TICKET) {
-          const av = avaliarFiltros(selected, filtros, anterior)
-          setJogosGerados([selected])
-          if (!av.ok) setErro(`Jogo único fora das faixas: ${av.motivos.join('; ')}`)
-          navigate('/lotofacil/resultados')
+        const { jogos, aviso } = gerarJogosFiltrados(selected, filtros, anterior, qtdJogos)
+        if (jogos.length === 0) {
+          setErro(aviso ?? 'Não foi possível gerar jogos.')
           return
         }
-
-        const all = getCombinations(selected, LF_TICKET)
-        const sample =
-          all.length > MAX_SAMPLE ? shuffleInPlace([...all]).slice(0, MAX_SAMPLE) : all
-
-        const ranqueados = sample
-          .map((jogo) => ({
-            jogo,
-            ok: avaliarFiltros(jogo, filtros, anterior).ok,
-            score: scoreFiltros(jogo, filtros, anterior),
-          }))
-          .filter((x) => x.ok)
-          .sort((a, b) => b.score - a.score)
-
-        const escolhidos = ranqueados.slice(0, QTD_JOGOS_FILTRO).map((x) => x.jogo)
-        if (escolhidos.length === 0) {
-          setErro(
-            'Nenhum bilhete de 15 passou nos filtros neste pool. Afrouxe as faixas ou mude as dezenas.',
-          )
-          return
-        }
-        setJogosGerados(escolhidos)
+        if (aviso) setErro(aviso)
+        setJogosGerados(jogos)
         navigate('/lotofacil/resultados')
       } finally {
         setGerando(false)
@@ -219,6 +200,39 @@ export default function LotofacilIndex() {
                 </p>
               </div>
               <FiltrosPainel filtros={filtros} onChange={setFiltros} />
+              <label className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-zinc-300">
+                <span>
+                  Quantidade de jogos
+                  <span className="block text-[10px] text-zinc-500 font-normal mt-0.5">
+                    Gera os {qtdJogos} melhores scores que passarem nos filtros ({LF_QTD_JOGOS_MIN}–
+                    {LF_QTD_JOGOS_MAX}).
+                  </span>
+                </span>
+                <input
+                  type="number"
+                  min={LF_QTD_JOGOS_MIN}
+                  max={LF_QTD_JOGOS_MAX}
+                  value={qtdJogos}
+                  onChange={(e) => setQtdJogos(clampQtdJogosLotofacil(Number(e.target.value)))}
+                  className="h-9 w-24 rounded-lg bg-[#1a1f2b] border border-[#262c34] px-2 text-sm font-bold text-violet-200 tabular-nums"
+                />
+              </label>
+              <div className="flex flex-wrap gap-1.5">
+                {[5, 10, 15, 20, 30, 50].map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setQtdJogos(n)}
+                    className={`h-8 px-2.5 rounded-lg text-[11px] font-bold border ${
+                      qtdJogos === n
+                        ? 'bg-violet-600 border-violet-400/40 text-white'
+                        : 'bg-[#1a1f2b] border-[#262c34] text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
               <button
                 type="button"
                 disabled={gerando || count < LF_TICKET}
@@ -226,7 +240,7 @@ export default function LotofacilIndex() {
                 className="w-full py-3 rounded-xl font-bold text-white bg-violet-600 hover:bg-violet-500 disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {gerando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                Gerar até {QTD_JOGOS_FILTRO} jogos filtrados
+                Gerar {qtdJogos} jogo{qtdJogos === 1 ? '' : 's'} filtrado{qtdJogos === 1 ? '' : 's'}
               </button>
             </div>
           ) : (
