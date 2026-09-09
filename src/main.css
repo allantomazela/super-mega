@@ -8,51 +8,53 @@
 @layer base {
   /* Tema claro (padrão do :root; html sem .dark) */
   :root {
-    --background: 210 33% 97%; /* #f4f7fb */
-    --foreground: 222 28% 12%;
+    --background: 210 40% 96%; /* #eef3f9 */
+    --foreground: 222 47% 11%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222 28% 12%;
+    --card-foreground: 222 47% 11%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222 28% 12%;
+    --popover-foreground: 222 47% 11%;
 
-    --primary: 158 84% 32%;
+    --primary: 158 84% 28%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 214 20% 92%;
-    --secondary-foreground: 222 28% 16%;
+    --secondary: 214 32% 91%;
+    --secondary-foreground: 222 40% 14%;
 
-    --muted: 214 18% 93%;
-    --muted-foreground: 220 12% 40%;
+    --muted: 214 28% 92%;
+    --muted-foreground: 220 18% 32%;
 
-    --accent: 158 70% 92%;
-    --accent-foreground: 158 84% 22%;
+    --accent: 158 55% 90%;
+    --accent-foreground: 158 84% 18%;
 
-    --destructive: 0 72% 48%;
+    --destructive: 0 72% 42%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 214 18% 86%;
-    --input: 214 18% 86%;
-    --ring: 158 84% 32%;
+    --border: 214 24% 82%;
+    --input: 214 24% 82%;
+    --ring: 158 84% 28%;
 
     --radius: 0.75rem;
 
-    --sidebar-background: 210 33% 97%;
-    --sidebar-foreground: 222 28% 12%;
-    --sidebar-primary: 158 84% 32%;
+    --sidebar-background: 210 40% 96%;
+    --sidebar-foreground: 222 47% 11%;
+    --sidebar-primary: 158 84% 28%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 214 20% 92%;
-    --sidebar-accent-foreground: 222 28% 16%;
-    --sidebar-border: 214 18% 86%;
-    --sidebar-ring: 158 84% 32%;
+    --sidebar-accent: 214 32% 91%;
+    --sidebar-accent-foreground: 222 40% 14%;
+    --sidebar-border: 214 24% 82%;
+    --sidebar-ring: 158 84% 28%;
 
-    --app-glow: rgba(16, 185, 129, 0.1);
+    --app-glow: rgba(5, 150, 105, 0.12);
     --surface-1: #ffffff;
-    --surface-2: #eef2f7;
-    --surface-3: #e4eaf2;
-    --ink-strong: #111827;
-    --ink-soft: #4b5563;
+    --surface-2: #e8eef6;
+    --surface-3: #dce5f0;
+    --ink-strong: #0f172a;
+    --ink-body: #1e293b;
+    --ink-soft: #475569;
+    --ink-muted: #64748b;
   }
 
   /* Tema escuro (atual do produto) */
@@ -99,7 +101,9 @@
     --surface-2: #1a1f2b;
     --surface-3: #12161b;
     --ink-strong: #f8fafc;
+    --ink-body: #e2e8f0;
     --ink-soft: #9ca3af;
+    --ink-muted: #71717a;
   }
 
   * {
@@ -153,7 +157,7 @@
 html:not(.dark) .bg-\[\#0d0f12\],
 html:not(.dark) .bg-\[\#0d0f12\]\/90,
 html:not(.dark) .bg-\[\#0d0f12\]\/60 {
-  background-color: hsl(var(--background) / 0.95) !important;
+  background-color: hsl(var(--background)) !important;
 }
 
 html:not(.dark) .bg-\[\#161a1f\],
@@ -180,49 +184,267 @@ html:not(.dark) .text-white {
   color: var(--ink-strong) !important;
 }
 
-html:not(.dark) .text-zinc-200,
-html:not(.dark) .text-zinc-300 {
-  color: hsl(220 16% 28%) !important;
+html:not(.dark) .text-zinc-100,
+html:not(.dark) .text-zinc-200 {
+  color: var(--ink-strong) !important;
 }
 
-html:not(.dark) .text-zinc-400,
+html:not(.dark) .text-zinc-300 {
+  color: var(--ink-body) !important;
+}
+
+html:not(.dark) .text-zinc-400 {
+  color: var(--ink-soft) !important;
+}
+
 html:not(.dark) .text-zinc-500,
 html:not(.dark) .text-zinc-600 {
-  color: var(--ink-soft) !important;
+  color: var(--ink-muted) !important;
 }
 
 html:not(.dark) .hover\:text-white:hover {
   color: var(--ink-strong) !important;
 }
 
-/* Mantém texto claro em botões/gradientes coloridos */
+/* Acentos pensados para fundo escuro → tons saturados legíveis no claro */
+html:not(.dark) .text-violet-100,
+html:not(.dark) .text-violet-200,
+html:not(.dark) .text-violet-300 {
+  color: #5b21b6 !important; /* violet-800 */
+}
+
+html:not(.dark) .text-violet-400 {
+  color: #6d28d9 !important; /* violet-700 */
+}
+
+html:not(.dark) .text-violet-400\/80 {
+  color: rgb(109 40 217 / 0.85) !important;
+}
+
+html:not(.dark) .text-emerald-200,
+html:not(.dark) .text-emerald-300 {
+  color: #047857 !important; /* emerald-700 */
+}
+
+html:not(.dark) .text-emerald-400 {
+  color: #059669 !important; /* emerald-600 */
+}
+
+html:not(.dark) .text-fuchsia-200,
+html:not(.dark) .text-fuchsia-300 {
+  color: #a21caf !important; /* fuchsia-700 */
+}
+
+html:not(.dark) .text-fuchsia-400 {
+  color: #c026d3 !important;
+}
+
+html:not(.dark) .text-amber-200,
+html:not(.dark) .text-amber-300 {
+  color: #b45309 !important; /* amber-700 */
+}
+
+html:not(.dark) .text-amber-400,
+html:not(.dark) .text-amber-400\/80 {
+  color: #d97706 !important;
+}
+
+html:not(.dark) .text-red-200,
+html:not(.dark) .text-red-300 {
+  color: #b91c1c !important;
+}
+
+html:not(.dark) .text-teal-200,
+html:not(.dark) .text-teal-300 {
+  color: #0f766e !important;
+}
+
+html:not(.dark) .text-sky-300,
+html:not(.dark) .text-sky-400 {
+  color: #0369a1 !important;
+}
+
+/* Badges / chips translúcidos */
+html:not(.dark) .bg-emerald-500\/15,
+html:not(.dark) .bg-emerald-500\/20 {
+  background-color: #d1fae5 !important;
+}
+
+html:not(.dark) .bg-violet-500\/15,
+html:not(.dark) .bg-violet-500\/20 {
+  background-color: #ede9fe !important;
+}
+
+html:not(.dark) .bg-fuchsia-500\/15,
+html:not(.dark) .bg-fuchsia-500\/20 {
+  background-color: #fae8ff !important;
+}
+
+html:not(.dark) .bg-amber-500\/15,
+html:not(.dark) .bg-amber-500\/20 {
+  background-color: #fef3c7 !important;
+}
+
+html:not(.dark) .bg-red-500\/15,
+html:not(.dark) .bg-red-500\/20 {
+  background-color: #fee2e2 !important;
+}
+
+html:not(.dark) .bg-emerald-600\/25,
+html:not(.dark) .bg-emerald-600\/30 {
+  background-color: #a7f3d0 !important;
+}
+
+html:not(.dark) .bg-violet-600\/25,
+html:not(.dark) .bg-violet-600\/30 {
+  background-color: #ddd6fe !important;
+}
+
+html:not(.dark) .bg-fuchsia-600\/25,
+html:not(.dark) .bg-fuchsia-600\/30 {
+  background-color: #f5d0fe !important;
+}
+
+html:not(.dark) .hover\:bg-emerald-900\/40:hover,
+html:not(.dark) .hover\:bg-emerald-900\/50:hover {
+  background-color: #d1fae5 !important;
+}
+
+html:not(.dark) .hover\:bg-violet-500:hover {
+  background-color: #7c3aed !important;
+}
+
+/* Painéis tintados (antes *-950 no dark) → pastéis com identidade */
+html:not(.dark) .bg-violet-950\/15,
+html:not(.dark) .bg-violet-950\/20,
+html:not(.dark) .bg-violet-950\/40,
+html:not(.dark) .bg-violet-950\/50,
+html:not(.dark) .bg-violet-950\/60 {
+  background-color: #f3eeff !important;
+}
+
+html:not(.dark) .bg-fuchsia-950\/15,
+html:not(.dark) .bg-fuchsia-950\/40,
+html:not(.dark) .bg-fuchsia-950\/50 {
+  background-color: #fce7f3 !important;
+}
+
+html:not(.dark) .bg-emerald-950\/20,
+html:not(.dark) .bg-emerald-950\/30,
+html:not(.dark) .bg-emerald-950\/40,
+html:not(.dark) .bg-emerald-950\/50 {
+  background-color: #ecfdf5 !important;
+}
+
+html:not(.dark) .bg-amber-950\/20,
+html:not(.dark) .bg-amber-950\/30,
+html:not(.dark) .bg-amber-950\/40 {
+  background-color: #fffbeb !important;
+}
+
+html:not(.dark) .bg-red-950\/40 {
+  background-color: #fef2f2 !important;
+}
+
+html:not(.dark) .bg-teal-950\/30,
+html:not(.dark) .bg-teal-950\/40 {
+  background-color: #f0fdfa !important;
+}
+
+/* Gradientes de destaque em cards → fundo pastel sólido + borda */
+html:not(.dark) .from-emerald-950\/40,
+html:not(.dark) .from-teal-950\/30,
+html:not(.dark) .to-teal-950\/30,
+html:not(.dark) .to-emerald-950\/30 {
+  --tw-gradient-from: #ecfdf5 var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: #f0fdfa var(--tw-gradient-to-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+
+html:not(.dark) .from-fuchsia-950\/40,
+html:not(.dark) .to-violet-950\/30,
+html:not(.dark) .from-violet-950\/40 {
+  --tw-gradient-from: #fce7f3 var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: #f3eeff var(--tw-gradient-to-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+
+/* Bordas de acento mais nítidas no claro */
+html:not(.dark) .border-emerald-400\/40,
+html:not(.dark) .border-emerald-500\/20,
+html:not(.dark) .border-emerald-500\/30,
+html:not(.dark) .border-emerald-500\/40,
+html:not(.dark) .border-emerald-500\/50 {
+  border-color: rgb(16 185 129 / 0.55) !important;
+}
+
+html:not(.dark) .border-violet-400\/40,
+html:not(.dark) .border-violet-500\/20,
+html:not(.dark) .border-violet-500\/30,
+html:not(.dark) .border-violet-500\/40,
+html:not(.dark) .border-violet-500\/50 {
+  border-color: rgb(139 92 246 / 0.5) !important;
+}
+
+html:not(.dark) .border-fuchsia-400\/40,
+html:not(.dark) .border-fuchsia-500\/30,
+html:not(.dark) .border-fuchsia-500\/40,
+html:not(.dark) .border-fuchsia-500\/50 {
+  border-color: rgb(217 70 239 / 0.5) !important;
+}
+
+html:not(.dark) .border-amber-500\/30,
+html:not(.dark) .border-amber-500\/40 {
+  border-color: rgb(245 158 11 / 0.55) !important;
+}
+
+html:not(.dark) .border-red-500\/40 {
+  border-color: rgb(239 68 68 / 0.5) !important;
+}
+
+html:not(.dark) .ring-emerald-400\/30,
+html:not(.dark) .ring-emerald-400\/40 {
+  --tw-ring-color: rgb(16 185 129 / 0.45) !important;
+}
+
+html:not(.dark) .ring-violet-400\/30,
+html:not(.dark) .ring-fuchsia-400\/30 {
+  --tw-ring-color: rgb(139 92 246 / 0.4) !important;
+}
+
+/* Sombras glow do dark → sombra suave no claro */
+html:not(.dark) .shadow-\[0_0_28px_rgba\(16\,185\,129\,0\.15\)\],
+html:not(.dark) .shadow-\[0_0_28px_rgba\(168\,85\,247\,0\.2\)\],
+html:not(.dark) .shadow-\[0_0_18px_rgba\(16\,185\,129\,0\.25\)\] {
+  box-shadow: 0 8px 24px rgb(15 23 42 / 0.08) !important;
+}
+
+/* Texto branco só em botões/sólidos coloridos (não em cards com from-*) */
 html:not(.dark) .bg-violet-600,
 html:not(.dark) .bg-violet-600 *,
+html:not(.dark) .bg-violet-500,
+html:not(.dark) .bg-violet-500 *,
 html:not(.dark) .bg-emerald-600,
 html:not(.dark) .bg-emerald-600 *,
 html:not(.dark) .bg-emerald-500,
 html:not(.dark) .bg-emerald-500 *,
 html:not(.dark) .bg-fuchsia-600,
 html:not(.dark) .bg-fuchsia-600 *,
+html:not(.dark) .bg-fuchsia-500,
+html:not(.dark) .bg-fuchsia-500 *,
 html:not(.dark) .emerald-gradient,
 html:not(.dark) .emerald-gradient *,
-html:not(.dark) [class*='from-violet-'],
-html:not(.dark) [class*='from-emerald-'],
-html:not(.dark) [class*='from-fuchsia-'] {
+html:not(.dark) .bg-gradient-to-br.from-violet-500,
+html:not(.dark) .bg-gradient-to-br.from-violet-500 *,
+html:not(.dark) .bg-gradient-to-br.from-emerald-500,
+html:not(.dark) .bg-gradient-to-br.from-emerald-500 *,
+html:not(.dark) .bg-gradient-to-br.from-fuchsia-500,
+html:not(.dark) .bg-gradient-to-br.from-fuchsia-500 * {
   color: #fff !important;
 }
 
-html:not(.dark) .bg-violet-950\/20,
-html:not(.dark) .bg-violet-950\/40,
-html:not(.dark) .bg-violet-950\/60,
-html:not(.dark) .bg-fuchsia-950\/15,
-html:not(.dark) .bg-fuchsia-950\/40,
-html:not(.dark) .bg-fuchsia-950\/50,
-html:not(.dark) .bg-amber-950\/20,
-html:not(.dark) .bg-amber-950\/30,
-html:not(.dark) .bg-red-950\/40,
-html:not(.dark) .bg-emerald-950\/20 {
-  background-color: hsl(var(--muted)) !important;
+html:not(.dark) .surface-card {
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.04), 0 8px 20px rgb(15 23 42 / 0.05);
 }
 
 /* Celular deitado: pouca altura — compacta chrome e deixa o conteúdo usável */
@@ -290,8 +512,19 @@ html:not(.dark) .bg-emerald-950\/20 {
 
   .number-btn-unselected:hover {
     background-color: var(--surface-3);
-    border-color: hsl(var(--ring) / 0.45);
+    border-color: hsl(var(--ring) / 0.55);
     color: hsl(var(--foreground));
+  }
+
+  html:not(.dark) .emerald-glow,
+  html:not(.dark) .emerald-glow-lg {
+    box-shadow: 0 4px 14px rgb(5 150 105 / 0.28);
+  }
+
+  html:not(.dark) .high-score-glow {
+    box-shadow: 0 0 0 2px rgb(16 185 129 / 0.35), 0 8px 20px rgb(5 150 105 / 0.18) !important;
+    border-color: rgb(5 150 105 / 0.75) !important;
+    animation: none;
   }
 
   @keyframes accordion-down {

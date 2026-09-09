@@ -15,7 +15,7 @@ export function ThemeToggle() {
     if (!mounted) return
     const meta = document.querySelector('meta[name="theme-color"]')
     if (meta) {
-      meta.setAttribute('content', resolvedTheme === 'light' ? '#f4f7fb' : '#0d0f12')
+      meta.setAttribute('content', resolvedTheme === 'light' ? '#eef3f9' : '#0d0f12')
     }
   }, [mounted, resolvedTheme])
 
